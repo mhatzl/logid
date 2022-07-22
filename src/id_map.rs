@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub struct LogIdMap {
-    map: Arc<RwLock<HashMap<LogId, LogIdEntry>>>,
+    map: Arc<RwLock<HashMap<LogId, Vec<LogIdEntry>>>>,
     last_log_id: RwLock<LogId>,
 }
 
@@ -27,7 +27,7 @@ impl LogIdMap {
         *self.last_log_id.read().unwrap()
     }
 
-    pub fn drain_map(&mut self) -> HashMap<LogId, LogIdEntry> {
+    pub fn drain_map(&mut self) -> HashMap<LogId, Vec<LogIdEntry>> {
         let map = &mut *self.map.write().unwrap();
         map.drain().collect()
     }

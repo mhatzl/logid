@@ -1,5 +1,7 @@
 //! Contains the `LogId` type and functions to create and set log IDs
 
+use crate::id_entry::Origin;
+
 /// Type to represent a LogId.
 ///
 /// **Note:** Wrapper of `isize` for easier `id <=> enum` conversion.
@@ -9,8 +11,10 @@ pub type LogId = isize;
 pub const INVALID_LOG_ID: LogId = 0;
 /// Bit shift in the log-id to place the [`EventLevel`] value
 const EVENT_LEVEL_SHIFT: i16 = 9;
+/// Number of valid log-id fields in an event (id, kind, msg)
+pub(crate) const NR_LOG_ID_FIELDS: usize = 3;
 
-/// Log kind a log-id can represent.
+/// Event level a log-id can represent.
 #[derive(Debug)]
 pub enum EventLevel {
     /// Log-id error kind
@@ -21,6 +25,54 @@ pub enum EventLevel {
     Info = 1,
     /// Log-id debug kind
     Debug = 0,
+}
+
+impl Default for EventLevel {
+    fn default() -> Self {
+        EventLevel::Debug
+    }
+}
+
+impl From<&tracing::Level> for EventLevel {
+    /// Converts tracing::Level to EventLevel.
+    /// `DEBUG` and `TRACE` are both converted to `EventLevel::Debug`.
+    fn from(level: &tracing::Level) -> Self {
+        if level == &tracing::Level::ERROR {
+            EventLevel::Error
+        } else if level == &tracing::Level::WARN {
+            EventLevel::Warn
+        } else if level == &tracing::Level::INFO {
+            EventLevel::Info
+        } else {
+            EventLevel::Debug
+        }
+    }
+}
+
+/// Event kind that may be part of a log-id entry.
+pub enum EventKind {
+    /// Kind that defines an event as the base of a log-id entry
+    Base = 0,
+    /// Identifies an event that defines the location of a log-id entry (e.g. filename and linenumber)
+    Location = 1,
+    /// Identifies an event that defines a cause of a log-id entry
+    Cause = 2,
+    /// Identifies an event that defines additional information for a log-id entry
+    Addon = 3,
+    /// Identifies an event that has an invalid log-id
+    Invalid = 4,
+}
+
+impl From<isize> for EventKind {
+    fn from(kind: isize) -> Self {
+        match kind {
+            0 => EventKind::Base,
+            1 => EventKind::Location,
+            2 => EventKind::Cause,
+            3 => EventKind::Addon,
+            _ => EventKind::Invalid,
+        }
+    }
 }
 
 /// Trait to use [`LogId`] for tracing.
@@ -52,58 +104,63 @@ pub trait LogIdTracing {
 
 impl LogIdTracing for LogId {
     fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> LogId {
-        let kind = self.get_level();
+        let level = self.get_level();
         // Note: It is not possible to set `target` via parameter, because it requires `const`
-        match kind {
-            EventLevel::Error => tracing::error!("{}: {}", self, msg),
-            EventLevel::Warn => tracing::warn!("{}: {}", self, msg),
-            EventLevel::Info => tracing::info!("{}: {}", self, msg),
-            EventLevel::Debug => tracing::debug!("{}: {}", self, msg),
+        // Same goes for `level` for the `event` macro => match and code duplication needed
+        match level {
+            EventLevel::Error => tracing::error!(id = self, kind = (EventKind::Base as isize), msg),
+            EventLevel::Warn => tracing::warn!(id = self, kind = (EventKind::Base as isize), msg),
+            EventLevel::Info => tracing::info!(id = self, kind = (EventKind::Base as isize), msg),
+            EventLevel::Debug => tracing::debug!(id = self, kind = (EventKind::Base as isize), msg),
         }
 
         tracing::trace!(
-            "{}: Occured in file \"{}\" at line: {}",
-            self,
-            filename,
-            line_nr
+            id = self,
+            kind = (EventKind::Location as isize),
+            msg = String::from(Origin::new(filename, line_nr))
         );
+
         self
     }
 
     fn add_cause(self, msg: &str) -> LogId {
-        tracing::info!("{}(cause): {}", self, msg);
+        tracing::info!(id = self, kind = (EventKind::Cause as isize), msg);
         self
     }
 
     fn add_info(self, msg: &str) -> LogId {
-        tracing::info!("{}(addon): {}", self, msg);
+        tracing::info!(id = self, kind = (EventKind::Addon as isize), msg);
         self
     }
 
     fn add_debug(self, msg: &str) -> LogId {
-        tracing::debug!("{}(addon): {}", self, msg);
+        tracing::debug!(id = self, kind = (EventKind::Addon as isize), msg);
         self
     }
 
     fn add_trace(self, msg: &str) -> LogId {
-        tracing::trace!("{}(addon): {}", self, msg);
+        tracing::trace!(id = self, kind = (EventKind::Addon as isize), msg);
         self
     }
 
     fn get_level(self) -> EventLevel {
         // get EventLevel bits
-        let kind = (self >> EVENT_LEVEL_SHIFT) & 3;
+        let level = (self >> EVENT_LEVEL_SHIFT) & 3;
 
-        if kind == (EventLevel::Error as isize) {
+        if level == (EventLevel::Error as isize) {
             EventLevel::Error
-        } else if kind == (EventLevel::Warn as isize) {
+        } else if level == (EventLevel::Warn as isize) {
             EventLevel::Warn
-        } else if kind == (EventLevel::Info as isize) {
+        } else if level == (EventLevel::Info as isize) {
             EventLevel::Info
-        } else if kind == (EventLevel::Debug as isize) {
+        } else if level == (EventLevel::Debug as isize) {
             EventLevel::Debug
         } else {
-            tracing::trace!("{}: Invalid level: '{}'", self, kind);
+            tracing::trace!(
+                id = self,
+                kind = (EventKind::Invalid as isize),
+                msg = format!("Invalid event level: {}", level)
+            );
             EventLevel::Error
         }
     }
