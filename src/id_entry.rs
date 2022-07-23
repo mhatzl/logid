@@ -1,7 +1,4 @@
 //! Contains the [`IdEntry`] definition used to capture messages for a log-id.
-use lazy_static::lazy_static;
-use regex::Regex;
-
 use crate::log_id::{EventLevel, LogId};
 
 /// Structure representing the origin of a log-id.
@@ -25,36 +22,15 @@ impl Origin {
 impl From<&Origin> for String {
     fn from(origin: &Origin) -> Self {
         format!(
-            "Occured in file=\"{}\" at line={}",
+            "file=\"{}\", line={}",
             origin.filename, origin.line_nr
         )
     }
 }
 
-impl From<String> for Origin {
-    fn from(s: String) -> Self {
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r#"Occured in file="(?P<file>.+)" at line=(?P<line>\d+)"#).unwrap();
-        }
-
-        if let Some(captures) = RE.captures(&s) {
-            let line: u32 = match &captures["line"].parse::<u32>() {
-                Ok(number) => *number,
-                Err(_) => 0,
-            };
-            return Origin {
-                filename: captures["file"].to_string(),
-                line_nr: line,
-            };
-        }
-        Origin::default()
-    }
-}
-
 impl core::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "file=\"{}\", line={}", self.filename, self.line_nr)
+        write!(f, "{}", String::from(self))
     }
 }
 
