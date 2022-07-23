@@ -1,6 +1,9 @@
 //! Contains the `LogId` type and functions to create and set log IDs
 
-use crate::id_entry::Origin;
+use crate::{
+    id_entry::{LogIdEntry, Origin},
+    id_map::LOG_ID_MAP,
+};
 
 /// Type to represent a LogId.
 ///
@@ -11,11 +14,9 @@ pub type LogId = isize;
 pub const INVALID_LOG_ID: LogId = 0;
 /// Bit shift in the log-id to place the [`EventLevel`] value
 const EVENT_LEVEL_SHIFT: i16 = 9;
-/// Number of valid log-id fields in an event (id, kind, msg)
-pub(crate) const NR_LOG_ID_FIELDS: usize = 3;
 
 /// Event level a log-id can represent.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EventLevel {
     /// Log-id error kind
     Error = 3,
@@ -104,10 +105,22 @@ pub trait LogIdTracing {
 
 impl LogIdTracing for LogId {
     fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> LogId {
-        let level = self.get_level();
+        let id_entry = LogIdEntry {
+            id: self,
+            level: self.get_level(),
+            msg: msg.to_string(),
+            origin: Origin::new(filename, line_nr),
+            span: if let Some(span) = tracing::span::Span::current().metadata() {
+                span.name()
+            } else {
+                "event not in span"
+            },
+            ..Default::default()
+        };
+
         // Note: It is not possible to set `target` via parameter, because it requires `const`
         // Same goes for `level` for the `event` macro => match and code duplication needed
-        match level {
+        match id_entry.level {
             EventLevel::Error => tracing::error!(id = self, kind = (EventKind::Base as isize), msg),
             EventLevel::Warn => tracing::warn!(id = self, kind = (EventKind::Base as isize), msg),
             EventLevel::Info => tracing::info!(id = self, kind = (EventKind::Base as isize), msg),
@@ -117,29 +130,61 @@ impl LogIdTracing for LogId {
         tracing::trace!(
             id = self,
             kind = (EventKind::Location as isize),
-            msg = String::from(Origin::new(filename, line_nr))
+            msg = String::from(&id_entry.origin)
         );
+
+        let update_map = LOG_ID_MAP.map.write();
+        if let Ok(mut map) = update_map {
+            match map.get_mut(&id_entry.id) {
+                Some(entries) => entries.push(id_entry),
+                None => {
+                    map.insert(id_entry.id, [id_entry].into());
+                }
+            };
+        }
 
         self
     }
 
     fn add_cause(self, msg: &str) -> LogId {
         tracing::info!(id = self, kind = (EventKind::Cause as isize), msg);
+
+        let update_map = LOG_ID_MAP.map.write();
+        if let Ok(mut map) = update_map {
+            match map.get_mut(&self) {
+                Some(entries) => {
+                    if let Some(last) = entries.last_mut() {
+                        last.add_cause(msg.to_string());
+                    };
+                }
+                None => {
+                    tracing::warn!(
+                        "Got cause=\"{}\" for log-id={}, but no base for log-id was set!",
+                        msg,
+                        self
+                    )
+                }
+            };
+        }
+
         self
     }
 
     fn add_info(self, msg: &str) -> LogId {
         tracing::info!(id = self, kind = (EventKind::Addon as isize), msg);
+        add_addon_to_map(self, msg, &tracing::Level::INFO);
         self
     }
 
     fn add_debug(self, msg: &str) -> LogId {
         tracing::debug!(id = self, kind = (EventKind::Addon as isize), msg);
+        add_addon_to_map(self, msg, &tracing::Level::DEBUG);
         self
     }
 
     fn add_trace(self, msg: &str) -> LogId {
         tracing::trace!(id = self, kind = (EventKind::Addon as isize), msg);
+        add_addon_to_map(self, msg, &tracing::Level::TRACE);
         self
     }
 
@@ -163,6 +208,26 @@ impl LogIdTracing for LogId {
             );
             EventLevel::Error
         }
+    }
+}
+
+fn add_addon_to_map(id: LogId, msg: &str, level: &tracing::Level) {
+    let update_map = LOG_ID_MAP.map.write();
+    if let Ok(mut map) = update_map {
+        match map.get_mut(&id) {
+            Some(entries) => {
+                if let Some(last) = entries.last_mut() {
+                    last.add_addon(level, msg.to_string());
+                };
+            }
+            None => {
+                tracing::warn!(
+                    "Got addon=\"{}\" for log-id={}, but no base for log-id was set!",
+                    msg,
+                    id
+                )
+            }
+        };
     }
 }
 

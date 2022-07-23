@@ -11,24 +11,34 @@ use crate::{
 };
 
 pub struct LogIdMap {
-    map: Arc<RwLock<HashMap<LogId, Vec<LogIdEntry>>>>,
+    pub(crate) map: Arc<RwLock<HashMap<LogId, Vec<LogIdEntry>>>>,
     last_log_id: RwLock<LogId>,
 }
 
 lazy_static! {
-    pub static ref LOG_ID_MAP: LogIdMap = LogIdMap {
-        map: Arc::new(RwLock::new(HashMap::new())),
-        last_log_id: RwLock::new(INVALID_LOG_ID),
-    };
+    pub(crate) static ref LOG_ID_MAP: LogIdMap = LogIdMap::new();
+}
+
+impl Default for LogIdMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub fn drain_map() -> HashMap<LogId, Vec<LogIdEntry>> {
+    let map = &mut *LOG_ID_MAP.map.write().unwrap();
+    map.drain().collect()
 }
 
 impl LogIdMap {
-    pub fn get_last_log_id(&self) -> LogId {
-        *self.last_log_id.read().unwrap()
+    pub fn new() -> Self {
+        LogIdMap {
+            map: Arc::new(RwLock::new(HashMap::new())),
+            last_log_id: RwLock::new(INVALID_LOG_ID),
+        }
     }
 
-    pub fn drain_map(&mut self) -> HashMap<LogId, Vec<LogIdEntry>> {
-        let map = &mut *self.map.write().unwrap();
-        map.drain().collect()
+    pub fn get_last_log_id(&self) -> LogId {
+        *self.last_log_id.read().unwrap()
     }
 }

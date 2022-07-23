@@ -5,7 +5,7 @@ use regex::Regex;
 use crate::log_id::{EventLevel, LogId};
 
 /// Structure representing the origin of a log-id.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Origin {
     /// Filename where the log-id was set
     filename: String,
@@ -14,7 +14,7 @@ pub struct Origin {
 }
 
 impl Origin {
-    pub(crate) fn new(filename: &str, line_nr: u32) -> Self {
+    pub fn new(filename: &str, line_nr: u32) -> Self {
         Origin {
             filename: filename.to_string(),
             line_nr,
@@ -22,8 +22,8 @@ impl Origin {
     }
 }
 
-impl From<Origin> for String {
-    fn from(origin: Origin) -> Self {
+impl From<&Origin> for String {
+    fn from(origin: &Origin) -> Self {
         format!(
             "Occured in file=\"{}\" at line={}",
             origin.filename, origin.line_nr
@@ -62,23 +62,23 @@ impl core::fmt::Display for Origin {
 #[derive(Debug, Default)]
 pub struct LogIdEntry {
     /// The log-id
-    pub(crate) id: LogId,
+    pub id: LogId,
     /// The level of the log-id
-    pub(crate) level: EventLevel,
+    pub level: EventLevel,
     /// The main message set when creating the log-id
-    pub(crate) msg: String,
+    pub msg: String,
     /// List of causes for this log-id
-    pub(crate) causes: Option<Vec<String>>,
+    pub causes: Option<Vec<String>>,
     /// List of additional informations for this log-id
-    pub(crate) infos: Option<Vec<String>>,
+    pub infos: Option<Vec<String>>,
     /// List of additional debug informations for this log-id
-    pub(crate) debugs: Option<Vec<String>>,
+    pub debugs: Option<Vec<String>>,
     /// List of additional trace information for this log-id
-    pub(crate) traces: Option<Vec<String>>,
+    pub traces: Option<Vec<String>>,
     /// Code position where the log-id was created
-    pub(crate) origin: Origin,
+    pub origin: Origin,
     /// Name of the span that was current when the log-id event was set
-    pub(crate) span: &'static str,
+    pub span: &'static str,
 }
 
 impl LogIdEntry {
