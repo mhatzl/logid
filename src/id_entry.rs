@@ -2,7 +2,7 @@
 use crate::log_id::{EventLevel, LogId};
 
 /// Structure representing the origin of a log-id.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Clone)]
 pub struct Origin {
     /// Filename where the log-id was set
     filename: String,
@@ -35,7 +35,7 @@ impl core::fmt::Display for Origin {
 }
 
 /// Structure to capture all messages set for a log-id.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct LogIdEntry {
     /// The log-id
     pub id: LogId,

@@ -1,7 +1,7 @@
 use logid::{
     id_entry::Origin,
     id_map::drain_map,
-    log_id::{get_log_id, EventLevel, LogIdTracing},
+    log_id::{get_log_id, EventLevel}, capturing::LogIdTracing,
 };
 
 #[test]
@@ -31,7 +31,7 @@ fn capture_single_logid() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 9),
+        Origin::new(file!(), 11),
         "Set and stored origins are not equal"
     );
 }

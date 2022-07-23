@@ -26,9 +26,14 @@ impl Default for LogIdMap {
 }
 
 pub fn drain_map() -> HashMap<LogId, Vec<LogIdEntry>> {
-    let map = &mut *LOG_ID_MAP.map.write().unwrap();
+    drain_map_with(&*LOG_ID_MAP)
+}
+
+pub fn drain_map_with(log_id_map: &LogIdMap) -> HashMap<LogId, Vec<LogIdEntry>> {
+    let map = &mut *log_id_map.map.write().unwrap();
     map.drain().collect()
 }
+
 
 impl LogIdMap {
     pub fn new() -> Self {
