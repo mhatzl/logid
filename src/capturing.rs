@@ -1,8 +1,8 @@
 //! Offers functionality to set an event on a [`LogId`] and capture its content in a [`LogIdMap`].
 
 use crate::{
-  id_entry::{LogIdEntry, Origin},
-  id_map::{LOG_ID_MAP, LogIdMap}, log_id::{EventLevel, LogId, LogIdLevel},
+  id_entry::{LogIdEntry},
+  id_map::{LOG_ID_MAP, LogIdMap}, log_id::{EventLevel, LogId},
 };
 
 /// Trait to use [`LogId`] for tracing.
@@ -36,73 +36,74 @@ pub trait LogIdTracing {
   fn set_silent_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a>;
 }
 
+/// Traces a [`LogIdEntry`] creation.
+fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> LogIdEntry {
+  let id_entry = LogIdEntry::new(id, msg, filename, line_nr);
+
+  // Note: It is not possible to set `target` via parameter, because it requires `const`
+  // Same goes for `level` for the `event` macro => match and code duplication needed
+  match id_entry.level {
+      EventLevel::Error => tracing::error!("{}: {}", id, msg),
+      EventLevel::Warn => tracing::warn!("{}: {}", id, msg),
+      EventLevel::Info => tracing::info!("{}: {}", id, msg),
+      EventLevel::Debug => tracing::debug!("{}: {}", id, msg),
+  }
+
+  tracing::trace!(
+      "{}(origin): {}", id, String::from(&id_entry.origin)
+  );
+
+  id_entry
+}
+
 impl LogIdTracing for LogId {
   fn set_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a> {
       self.set_event_with(&*LOG_ID_MAP, msg, filename, line_nr)
   }
 
   fn set_event_with<'a>(self, log_map: &'a LogIdMap, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a> {
-      let mut mapped_id = self.set_silent_event(msg, filename, line_nr);
-      mapped_id.map = Some(log_map);
+      let entry = trace_entry_creation(self, msg, filename, line_nr);
 
       let update_map = log_map.map.write();
       if let Ok(mut map) = update_map {
           match map.get_mut(&self) {
-              Some(entries) => entries.push(mapped_id.entry.clone()),
+              Some(entries) => entries.push(entry),
               None => {
-                  map.insert(self, [mapped_id.entry.clone()].into());
+                  map.insert(self, [entry].into());
               }
           };
       }
 
-      mapped_id
+      MappedLogId { id: self, map: Some(log_map) }
   }
 
   fn set_silent_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a> {
-      let id_entry = LogIdEntry {
-          id: self,
-          level: self.get_level(),
-          msg: msg.to_string(),
-          origin: Origin::new(filename, line_nr),
-          span: if let Some(span) = tracing::span::Span::current().metadata() {
-              span.name()
-          } else {
-              "event not in span"
-          },
-          ..Default::default()
-      };
+      let id_entry = trace_entry_creation(self, msg, filename, line_nr);
 
-      // Note: It is not possible to set `target` via parameter, because it requires `const`
-      // Same goes for `level` for the `event` macro => match and code duplication needed
-      match id_entry.level {
-          EventLevel::Error => tracing::error!("{}: {}", self, msg),
-          EventLevel::Warn => tracing::warn!("{}: {}", self, msg),
-          EventLevel::Info => tracing::info!("{}: {}", self, msg),
-          EventLevel::Debug => tracing::debug!("{}: {}", self, msg),
-      }
-
-      tracing::trace!(
-          "{}(origin): {}", self, String::from(&id_entry.origin)
-      );
-
-      MappedLogId{ entry: id_entry, map: None }
+      MappedLogId{ id: id_entry.id, map: None }
   }
 }
 
+/// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 pub struct MappedLogId<'a> {
-  entry: LogIdEntry,
+  id: LogId,
   map: Option<&'a LogIdMap>,
 }
 
 impl<'a> MappedLogId<'a> {
+  // Returns the [`LogId`] of the [`MappedLogId`].
+  pub fn id(&self) -> LogId {
+    self.id
+  }
+
   /// Add a message describing the cause for this log-id
   pub fn add_cause(self, msg: &str) -> Self {
-      tracing::info!("{}(cause): {}", self.entry.id, msg);
+      tracing::info!("{}(cause): {}", self.id, msg);
 
       if let Some(log_map) = self.map {
           let update_map = log_map.map.write();
           if let Ok(mut map) = update_map {
-              match map.get_mut(&self.entry.id) {
+              match map.get_mut(&self.id) {
                   Some(entries) => {
                       if let Some(last) = entries.last_mut() {
                           last.add_cause(msg.to_string());
@@ -112,7 +113,7 @@ impl<'a> MappedLogId<'a> {
                       tracing::warn!(
                           "Got cause=\"{}\" for log-id={}, but no base for log-id was set!",
                           msg,
-                          self.entry.id
+                          self.id
                       )
                   }
               };
@@ -124,21 +125,21 @@ impl<'a> MappedLogId<'a> {
 
   /// Add an info message for this log-id
   pub fn add_info(self, msg: &str) -> Self {
-      tracing::info!("{}(addon): {}", self.entry.id, msg);
+      tracing::info!("{}(addon): {}", self.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::INFO);
       self
   }
 
   /// Add a debug message for this log-id
   pub fn add_debug(self, msg: &str) -> Self {
-      tracing::debug!("{}(addon): {}", self.entry.id, msg);
+      tracing::debug!("{}(addon): {}", self.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::DEBUG);
       self
   }
 
   /// Add a trace message for this log-id
   pub fn add_trace(self, msg: &str) -> Self {
-      tracing::trace!("{}(addon): {}", self.entry.id, msg);
+      tracing::trace!("{}(addon): {}", self.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::TRACE);
       self
   }
@@ -148,7 +149,7 @@ fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) 
   if let Some(log_map) = mapped_id.map {
       let update_map = log_map.map.write();
       if let Ok(mut map) = update_map {
-          match map.get_mut(&mapped_id.entry.id) {
+          match map.get_mut(&mapped_id.id) {
               Some(entries) => {
                   if let Some(last) = entries.last_mut() {
                       last.add_addon(level, msg.to_string());
@@ -158,7 +159,7 @@ fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) 
                   tracing::warn!(
                       "Got addon=\"{}\" for log-id={}, but no base for log-id was set!",
                       msg,
-                      mapped_id.entry.id
+                      mapped_id.id
                   )
               }
           };

@@ -11,14 +11,14 @@ pub const INVALID_LOG_ID: LogId = 0;
 /// Event level a log-id may represent.
 #[derive(Debug, PartialEq, Clone)]
 pub enum EventLevel {
-    /// Log-id error kind
-    Error = 3,
-    /// Log-id warning kind
-    Warn = 2,
-    /// Log-id info kind
-    Info = 1,
     /// Log-id debug kind
     Debug = 0,
+    /// Log-id info kind
+    Info = 1,
+    /// Log-id warning kind
+    Warn = 2,
+    /// Log-id error kind
+    Error = 3,
 }
 
 impl Default for EventLevel {

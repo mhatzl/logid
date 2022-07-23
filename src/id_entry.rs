@@ -1,5 +1,5 @@
 //! Contains the [`LogIdEntry`] definition used to capture messages for a log-id.
-use crate::log_id::{EventLevel, LogId};
+use crate::log_id::{EventLevel, LogId, LogIdLevel};
 
 /// Structure representing the origin of a log-id.
 #[derive(Debug, Default, PartialEq, Clone)]
@@ -46,13 +46,13 @@ pub struct LogIdEntry {
     /// The main message set when creating the log-id
     pub msg: String,
     /// List of causes for this log-id
-    pub causes: Option<Vec<String>>,
+    pub causes: Vec<String>,
     /// List of additional informations for this log-id
-    pub infos: Option<Vec<String>>,
+    pub infos: Vec<String>,
     /// List of additional debug informations for this log-id
-    pub debugs: Option<Vec<String>>,
+    pub debugs: Vec<String>,
     /// List of additional trace information for this log-id
-    pub traces: Option<Vec<String>>,
+    pub traces: Vec<String>,
     /// Code position where the log-id was created
     pub origin: Origin,
     /// Name of the span that was current when the log-id event was set
@@ -60,13 +60,25 @@ pub struct LogIdEntry {
 }
 
 impl LogIdEntry {
+    /// Create a new [`LogIdEntry`].
+    pub(crate) fn new(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Self {
+        LogIdEntry {
+            id,
+            level: id.get_level(),
+            msg: msg.to_string(),
+            origin: Origin::new(filename, line_nr),
+            span: if let Some(span) = tracing::span::Span::current().metadata() {
+                span.name()
+            } else {
+                "event not in span"
+            },
+            ..Default::default()
+        }
+    }
+
     /// Add cause to given [`LogIdEntry`].
     pub(crate) fn add_cause(&mut self, cause: String) {
-        if let Some(causes) = self.causes.as_mut() {
-            causes.push(cause);
-        } else {
-            self.causes = Some([cause].into());
-        }
+        self.causes.push(cause);
     }
 
     /// Add additional information to given [`LogIdEntry`].
@@ -78,23 +90,14 @@ impl LogIdEntry {
     /// * `addon` - the additional information that is added to the [`LogIdEntry`]
     pub(crate) fn add_addon(&mut self, level: &tracing::Level, addon: String) {
         let addons = match *level {
-            tracing::Level::INFO => self.infos.as_mut(),
-            tracing::Level::DEBUG => self.debugs.as_mut(),
-            tracing::Level::TRACE => self.traces.as_mut(),
+            tracing::Level::INFO => &mut self.infos,
+            tracing::Level::DEBUG => &mut self.debugs,
+            tracing::Level::TRACE => &mut self.traces,
             _ => {
                 return;
             }
         };
 
-        if let Some(addons) = addons {
-            addons.push(addon);
-        } else {
-            match *level {
-                tracing::Level::INFO => self.infos = Some([addon].into()),
-                tracing::Level::DEBUG => self.debugs = Some([addon].into()),
-                tracing::Level::TRACE => self.traces = Some([addon].into()),
-                _ => (),
-            }
-        }
+        addons.push(addon);
     }
 }
