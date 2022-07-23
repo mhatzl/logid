@@ -6,7 +6,7 @@ description = "Rust logging framework using IDs to identify log entries."
 repository = "https://github.com/mhatzl/logid"
 license = "MIT"
 keywords = ["logging", "tracing"]
-categories = ["Debugging"]
+categories = ["development-tools::debugging"]
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
