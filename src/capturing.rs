@@ -96,7 +96,7 @@ pub struct MappedLogId<'a> {
 
 impl<'a> MappedLogId<'a> {
   /// Add a message describing the cause for this log-id
-  fn add_cause(self, msg: &str) -> Self {
+  pub fn add_cause(self, msg: &str) -> Self {
       tracing::info!("{}(cause): {}", self.entry.id, msg);
 
       if let Some(log_map) = self.map {
@@ -123,21 +123,21 @@ impl<'a> MappedLogId<'a> {
   }
 
   /// Add an info message for this log-id
-  fn add_info(self, msg: &str) -> Self {
+  pub fn add_info(self, msg: &str) -> Self {
       tracing::info!("{}(addon): {}", self.entry.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::INFO);
       self
   }
 
   /// Add a debug message for this log-id
-  fn add_debug(self, msg: &str) -> Self {
+  pub fn add_debug(self, msg: &str) -> Self {
       tracing::debug!("{}(addon): {}", self.entry.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::DEBUG);
       self
   }
 
   /// Add a trace message for this log-id
-  fn add_trace(self, msg: &str) -> Self {
+  pub fn add_trace(self, msg: &str) -> Self {
       tracing::trace!("{}(addon): {}", self.entry.id, msg);
       add_addon_to_map(&self, msg, &tracing::Level::TRACE);
       self

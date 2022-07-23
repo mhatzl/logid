@@ -1,4 +1,4 @@
-//! Contains the [`IdEntry`] definition used to capture messages for a log-id.
+//! Contains the [`LogIdEntry`] definition used to capture messages for a log-id.
 use crate::log_id::{EventLevel, LogId};
 
 /// Structure representing the origin of a log-id.
@@ -11,6 +11,7 @@ pub struct Origin {
 }
 
 impl Origin {
+    /// Create a new [`Origin`].
     pub fn new(filename: &str, line_nr: u32) -> Self {
         Origin {
             filename: filename.to_string(),
@@ -20,6 +21,7 @@ impl Origin {
 }
 
 impl From<&Origin> for String {
+    /// Outputs given [`Origin`] as `file="<filename>", line=<line number>`.
     fn from(origin: &Origin) -> Self {
         format!(
             "file=\"{}\", line={}",
@@ -58,6 +60,7 @@ pub struct LogIdEntry {
 }
 
 impl LogIdEntry {
+    /// Add cause to given [`LogIdEntry`].
     pub(crate) fn add_cause(&mut self, cause: String) {
         if let Some(causes) = self.causes.as_mut() {
             causes.push(cause);
@@ -66,6 +69,13 @@ impl LogIdEntry {
         }
     }
 
+    /// Add additional information to given [`LogIdEntry`].
+    /// The destination depends on the given [`tracing::Level`].
+    /// 
+    /// # Arguments
+    /// 
+    /// * `level` - [tracing::Level`] defining the destination of the addon
+    /// * `addon` - the additional information that is added to the [`LogIdEntry`]
     pub(crate) fn add_addon(&mut self, level: &tracing::Level, addon: String) {
         let addons = match *level {
             tracing::Level::INFO => self.infos.as_mut(),

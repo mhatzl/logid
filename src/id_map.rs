@@ -10,12 +10,15 @@ use crate::{
     log_id::{LogId, INVALID_LOG_ID},
 };
 
+/// Map to capture [`LogId`]s, and combine all informations set
+/// for  a [`LogId`] inside a [`LogIdEntry`]. 
 pub struct LogIdMap {
     pub(crate) map: Arc<RwLock<HashMap<LogId, Vec<LogIdEntry>>>>,
     last_log_id: RwLock<LogId>,
 }
 
 lazy_static! {
+    /// Global [`LogIdMap`] that may be used to capture all [`LogId`]s in one place.
     pub(crate) static ref LOG_ID_MAP: LogIdMap = LogIdMap::new();
 }
 
@@ -25,17 +28,13 @@ impl Default for LogIdMap {
     }
 }
 
+/// Drain global [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
 pub fn drain_map() -> HashMap<LogId, Vec<LogIdEntry>> {
-    drain_map_with(&*LOG_ID_MAP)
+    (*LOG_ID_MAP).drain_map()
 }
-
-pub fn drain_map_with(log_id_map: &LogIdMap) -> HashMap<LogId, Vec<LogIdEntry>> {
-    let map = &mut *log_id_map.map.write().unwrap();
-    map.drain().collect()
-}
-
 
 impl LogIdMap {
+    /// Create a new [`LogIdMap`].
     pub fn new() -> Self {
         LogIdMap {
             map: Arc::new(RwLock::new(HashMap::new())),
@@ -45,5 +44,11 @@ impl LogIdMap {
 
     pub fn get_last_log_id(&self) -> LogId {
         *self.last_log_id.read().unwrap()
+    }
+
+    /// Drain this [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
+    pub fn drain_map(&self) -> HashMap<LogId, Vec<LogIdEntry>> {
+        let map = &mut *self.map.write().unwrap();
+        map.drain().collect()
     }
 }
