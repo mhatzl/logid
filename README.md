@@ -99,6 +99,9 @@ and help standardize the use across crates.
 Feel free to create issues and pull requests.
 However, feedback about the general concept is of greater value at this stage of development.
 
+Note that any contribution intentionally submitted to `logid`
+is going to be MIT licensed.
+
 ## License
 
 MIT Licensed
