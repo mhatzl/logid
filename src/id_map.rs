@@ -3,7 +3,7 @@ use std::{
     sync::RwLock,
 };
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use crate::{
     id_entry::LogIdEntry,
@@ -17,10 +17,7 @@ pub struct LogIdMap {
     last_log_id: RwLock<LogId>,
 }
 
-lazy_static! {
-    /// Global [`LogIdMap`] that may be used to capture all [`LogId`]s in one place.
-    pub(crate) static ref LOG_ID_MAP: LogIdMap = LogIdMap::new();
-}
+pub static LOG_ID_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
 impl Default for LogIdMap {
     fn default() -> Self {
@@ -30,7 +27,7 @@ impl Default for LogIdMap {
 
 /// Drain global [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
 pub fn drain_map() -> HashMap<LogId, Vec<LogIdEntry>> {
-    (*LOG_ID_MAP).drain_map()
+    LOG_ID_MAP.drain_map()
 }
 
 impl LogIdMap {
@@ -48,6 +45,7 @@ impl LogIdMap {
 
     /// Drain this [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
     pub fn drain_map(&self) -> HashMap<LogId, Vec<LogIdEntry>> {
+        //Note: Due to RWLock, mutable access to map is fine
         let map = &mut *self.map.write().unwrap();
         map.drain().collect()
     }
