@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::RwLock,
 };
 
 use lazy_static::lazy_static;
@@ -13,7 +13,7 @@ use crate::{
 /// Map to capture [`LogId`]s, and combine all informations set
 /// for  a [`LogId`] inside a [`LogIdEntry`]. 
 pub struct LogIdMap {
-    pub(crate) map: Arc<RwLock<HashMap<LogId, Vec<LogIdEntry>>>>,
+    pub(crate) map: RwLock<HashMap<LogId, Vec<LogIdEntry>>>,
     last_log_id: RwLock<LogId>,
 }
 
@@ -37,7 +37,7 @@ impl LogIdMap {
     /// Create a new [`LogIdMap`].
     pub fn new() -> Self {
         LogIdMap {
-            map: Arc::new(RwLock::new(HashMap::new())),
+            map: RwLock::new(HashMap::new()),
             last_log_id: RwLock::new(INVALID_LOG_ID),
         }
     }
