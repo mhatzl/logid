@@ -2,6 +2,12 @@
 name = "logid"
 version = "0.1.0"
 edition = "2021"
+description = "Rust logging framework using IDs to identify log entries."
+repository = "https://github.com/mhatzl/logid"
+license = "MIT"
+keywords = ["logging", "tracing"]
+categories = ["Debugging"]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
