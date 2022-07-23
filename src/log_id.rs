@@ -7,8 +7,6 @@ pub type LogId = isize;
 
 /// Represents an invalid log-id
 pub const INVALID_LOG_ID: LogId = 0;
-/// Bit shift in the log-id to place the [`EventLevel`] value
-const EVENT_LEVEL_SHIFT: i16 = 9;
 
 /// Event level a log-id may represent.
 #[derive(Debug, PartialEq, Clone)]
@@ -71,9 +69,12 @@ impl LogIdLevel for LogId {
     }
 }
 
+/// Bit shift in the log-id to place the [`EventLevel`] value
+const EVENT_LEVEL_SHIFT: i16 = 8;
 
-/// Returns a 16-bit log-id that is used to identify a logID message across a project.
-/// The log-id is a unique signed integer value that is identified by bit shifting given group numbers and event level.
+/// Returns a 16-bit log-id that is used to identify a log-id message across a project.
+/// The log-id is a unique unsigned integer value that is identified by bit shifting given group numbers and event level.
+/// The 16-bit result in a possible log-id range of [0 .. 65535].
 ///
 /// The log-id bits are represented as follows:
 ///
@@ -89,22 +90,71 @@ impl LogIdLevel for LogId {
 /// # Example
 ///
 /// ~~~
-/// use unimarkup_core::log_id::{get_log_id, EventLevel};
+/// use logid::log_id::{get_log_id, EventLevel};
 ///
 /// assert_eq!(get_log_id(0, 0, EventLevel::Debug, 1), 1);
 /// assert_eq!(get_log_id(1, 0, EventLevel::Error, 1), 17153);
+/// assert_eq!(get_log_id(3, 15, EventLevel::Error, 255), 65535);
 /// ~~~
 pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, local_nr: u8) -> LogId {
-    let event_level_number: i16 = event_level as i16;
+    let event_level_number: u16 = event_level as u16;
 
     // Id = 0 is not allowed
     //
     // TODO: needs unstable "panic!() in const fn" feature. Uncomment after feature is in stable
-    //panic!((main_grp == 0) && (sub_grp == 0) && (event_level == 0) && (local_nr == 0), "Log ID 0 is not allowed!");
-    //panic!((main_grp >= 2^2) || (sub_grp >= 2^4), "At least one log ID subrange is invalid.");
+    //panic!((main_grp == 0) && (sub_grp == 0) && (event_level == 0) && (local_nr == 0), "Log-id `0` is not allowed!");
+    //panic!((main_grp >= 2^2) || (sub_grp >= 2^4), "At least one log-id subrange is invalid.");
 
-    (((main_grp as i16) << 15)
-        + ((sub_grp as i16) << 11)
+    (((main_grp as u16) << 14)
+        + ((sub_grp as u16) << 10)
         + (event_level_number << EVENT_LEVEL_SHIFT)
-        + (local_nr as i16)) as LogId
+        + (local_nr as u16)) as LogId
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::{get_log_id, LogIdLevel, EventLevel};
+
+    #[test]
+    fn create_log_id_with_error() {
+        let log_id = get_log_id(0, 0, EventLevel::Error, 0);
+
+        assert_eq!(log_id.get_level(), EventLevel::Error, "Log-id levels are not equal");
+    }
+
+    #[test]
+    fn main_log_id_set_1() {
+        let log_id = get_log_id(1, 0, EventLevel::Debug, 0);
+
+        assert_eq!(log_id, 0b0100000000000000, "Log-id value not shifted correctly");
+    }
+
+    #[test]
+    fn main_log_id_set_3() {
+        let log_id = get_log_id(3, 0, EventLevel::Debug, 0);
+
+        assert_eq!(log_id, 0b1100000000000000, "Log-id value not shifted correctly");
+    }
+
+    #[test]
+    fn sub_log_id_set_3() {
+        let log_id = get_log_id(0, 3, EventLevel::Debug, 0);
+
+        assert_eq!(log_id, 0b0000110000000000, "Log-id value not shifted correctly");
+    }
+
+    #[test]
+    fn local_log_id_set_3() {
+        let log_id = get_log_id(0, 0, EventLevel::Debug, 3);
+
+        assert_eq!(log_id, 0b0000000000000011, "Log-id value not shifted correctly");
+    }
+
+    #[test]
+    fn log_id_level_set_warning() {
+        let log_id = get_log_id(0, 0, EventLevel::Warn, 0);
+
+        assert_eq!(log_id, 0b0000001000000000, "Log-id value not shifted correctly");
+    }
 }
