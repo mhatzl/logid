@@ -203,7 +203,6 @@ impl<'a> MappedLogId<'a> {
         self.id
     }
 
-
     #[cfg(feature = "diagnostics")]
     pub fn add_diagnostic(self, diagnostic: Diagnostic) -> Self {
         tracing::trace!("{}(diag): {:?}", self.id, diagnostic);
@@ -230,7 +229,6 @@ impl<'a> MappedLogId<'a> {
 
         self
     }
-
 }
 
 fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) {

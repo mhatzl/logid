@@ -74,8 +74,8 @@ pub struct LogIdEntry {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Diagnostic {
     /// Original input that caused this log-id entry
-    /// 
-    /// **Note:** If `filepath` is set instead, the original input may be read directly from the file. 
+    ///
+    /// **Note:** If `filepath` is set instead, the original input may be read directly from the file.
     pub input: Option<String>,
     /// Path to the file holding the original input that caused this log-id entry
     pub filepath: Option<PathBuf>,
