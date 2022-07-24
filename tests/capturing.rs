@@ -44,6 +44,7 @@ fn capture_single_logid() {
     );
 }
 
+#[cfg(feature = "causes")]
 #[test]
 fn capture_single_logid_with_cause() {
     let log_id = get_log_id(0, 0, EventLevel::Warn, 1);
@@ -77,7 +78,7 @@ fn capture_single_logid_with_cause() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 54),
+        Origin::new(file!(), 55),
         "Set and stored origins are not equal"
     );
 

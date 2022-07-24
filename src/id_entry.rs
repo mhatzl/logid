@@ -46,8 +46,6 @@ pub struct LogIdEntry {
     pub level: EventLevel,
     /// The main message set when creating the log-id entry
     pub msg: String,
-    /// List of causes for this log-id entry
-    pub causes: Vec<String>,
     /// List of additional informations for this log-id entry
     pub infos: Vec<String>,
     /// List of additional debug informations for this log-id entry
@@ -62,6 +60,10 @@ pub struct LogIdEntry {
     /// Flag to inform that an entry may be safely drained.
     /// This is the case, when no more information is added to the entry.
     drainable: bool,
+
+    /// List of causes for this log-id entry
+    #[cfg(feature = "causes")]
+    pub causes: Vec<String>,
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
@@ -128,11 +130,13 @@ impl LogIdEntry {
             } else {
                 "event not in span"
             },
-            causes: Vec::default(),
             infos: Vec::default(),
             debugs: Vec::default(),
             traces: Vec::default(),
             drainable: false,
+
+            #[cfg(feature = "causes")]
+            causes: Vec::default(),
 
             #[cfg(feature = "diagnostics")]
             diagnostics: Vec::default(),
@@ -140,6 +144,7 @@ impl LogIdEntry {
     }
 
     /// Add cause to given [`LogIdEntry`].
+    #[cfg(feature = "causes")]
     pub(crate) fn add_cause(&mut self, cause: String) {
         self.causes.push(cause);
     }

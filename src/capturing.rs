@@ -128,6 +128,7 @@ impl<'a> MappedLogId<'a> {
     }
 
     /// Add a message describing the cause for this log-id
+    #[cfg(feature = "causes")]
     pub fn add_cause(self, msg: &str) -> Self {
         tracing::info!("{}(cause): {}", self.id, msg);
 
