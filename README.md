@@ -56,7 +56,7 @@ Those functions all start with `add_`.
 
 The following example shows the usage as return value:
 
-```Rust
+~~~Rust
 const SOME_ERROR: LogId = get_log_id(0, 0, EventLevel::Error, 0);
 
 fn my_func() -> Result<usize, LogId> {
@@ -67,7 +67,7 @@ fn my_func() -> Result<usize, LogId> {
       .add_cause("Cause of error -> unknown").finalize()  
   )
 }
-```
+~~~
 
 ## Usage Guidelines
 

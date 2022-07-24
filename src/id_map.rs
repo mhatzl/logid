@@ -1,3 +1,5 @@
+//! Contains the [`LogIdMap`] definition used to capture [`LogId`]s and their [`LogIdEntry`]s.
+
 use std::{
     collections::HashMap,
     sync::{RwLock, RwLockWriteGuard},
