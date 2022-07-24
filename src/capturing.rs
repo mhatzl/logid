@@ -6,6 +6,9 @@ use crate::{
     log_id::{EventLevel, LogId},
 };
 
+#[cfg(feature = "diagnostics")]
+use crate::id_entry::Diagnostic;
+
 /// Trait to use [`LogId`] for tracing.
 pub trait LogIdTracing {
     /// Set an event for a [`LogId`] using the global [`LogIdMap`] reference [`LOG_ID_MAP`].
@@ -199,6 +202,35 @@ impl<'a> MappedLogId<'a> {
 
         self.id
     }
+
+
+    #[cfg(feature = "diagnostics")]
+    pub fn add_diagnostic(self, diagnostic: Diagnostic) -> Self {
+        tracing::trace!("{}(diag): {:?}", self.id, diagnostic);
+
+        if let Some(log_map) = self.map {
+            let update_map = log_map.map.write();
+            if let Ok(mut map) = update_map {
+                match map.get_mut(&self.id) {
+                    Some(entries) => {
+                        if let Some(last) = entries.last_mut() {
+                            last.add_diagnostic(diagnostic);
+                        };
+                    }
+                    None => {
+                        tracing::warn!(
+                            "Got diagnostic=\"{:?}\" for log-id={}, but no base for log-id was set!",
+                            diagnostic,
+                            self.id
+                        )
+                    }
+                };
+            }
+        }
+
+        self
+    }
+
 }
 
 fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) {

@@ -15,5 +15,9 @@ readme = "README.md"
 tracing = "0.1.35"
 once_cell = "1.13.0"
 
+[features]
+default = ["diagnostics"]
+diagnostics = []
+
 [dev-dependencies]
 tracing-subscriber = "0.3.15"

@@ -1,4 +1,8 @@
 //! Contains the [`LogIdEntry`] definition used to capture messages for a log-id.
+
+#[cfg(feature = "diagnostics")]
+use std::path::PathBuf;
+
 use crate::log_id::{EventLevel, LogId, LogIdLevel};
 
 /// Structure representing the origin of a log-id.
@@ -36,21 +40,21 @@ impl core::fmt::Display for Origin {
 /// Structure to capture all messages set for a log-id.
 #[derive(Debug, Clone)]
 pub struct LogIdEntry {
-    /// The log-id
+    /// The log-id of this entry
     pub id: LogId,
-    /// The level of the log-id
+    /// The level of the log-id of this entry
     pub level: EventLevel,
-    /// The main message set when creating the log-id
+    /// The main message set when creating the log-id entry
     pub msg: String,
-    /// List of causes for this log-id
+    /// List of causes for this log-id entry
     pub causes: Vec<String>,
-    /// List of additional informations for this log-id
+    /// List of additional informations for this log-id entry
     pub infos: Vec<String>,
-    /// List of additional debug informations for this log-id
+    /// List of additional debug informations for this log-id entry
     pub debugs: Vec<String>,
-    /// List of additional trace information for this log-id
+    /// List of additional trace information for this log-id entry
     pub traces: Vec<String>,
-    /// Code position where the log-id was created
+    /// Code position where the log-id entry was created
     pub origin: Origin,
     /// Name of the span that was current when the log-id event was set
     pub span: &'static str,
@@ -58,6 +62,57 @@ pub struct LogIdEntry {
     /// Flag to inform that an entry may be safely drained.
     /// This is the case, when no more information is added to the entry.
     drainable: bool,
+
+    /// List of diagnostics for this log-id entry
+    #[cfg(feature = "diagnostics")]
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// Diagnostic struct offering information about the original input
+/// that may be used to create detailed diagnostics (e.g. for language server diagnostics).
+#[cfg(feature = "diagnostics")]
+#[derive(Debug, Clone)]
+pub struct Diagnostic {
+    /// Original input that caused this log-id entry
+    /// 
+    /// **Note:** If `filepath` is set instead, the original input may be read directly from the file. 
+    pub input: Option<String>,
+    /// Path to the file holding the original input that caused this log-id entry
+    pub filepath: Option<PathBuf>,
+    /// The range inside the original input that caused this log-id entry
+    pub range: Range,
+    /// Diagnostic tags that apply to this log-id entry
+    pub tags: Vec<DiagnosticTag>,
+}
+
+/// Specifies a position inside a text-based 2D-structure.
+#[cfg(feature = "diagnostics")]
+#[derive(Debug, Clone)]
+pub struct Position {
+    /// The line number of the position.
+    pub line: usize,
+    /// The column number of the position
+    pub column: usize,
+}
+
+/// Specifies a range inside a text-based 2D-structure.
+#[cfg(feature = "diagnostics")]
+#[derive(Debug, Clone)]
+pub struct Range {
+    /// The start position of the range.
+    pub start: Position,
+    /// The end position of the range.
+    pub end: Position,
+}
+
+/// Diagnostic tags inspired from the language server protocol.
+#[cfg(feature = "diagnostics")]
+#[derive(Debug, Clone)]
+pub enum DiagnosticTag {
+    /// Tag to mark unused or unnecessary input
+    Unnecessary = 1,
+    /// Tag to mark the usage of a certain input as deprecated.
+    Deprecated = 2,
 }
 
 impl LogIdEntry {
@@ -78,6 +133,9 @@ impl LogIdEntry {
             debugs: Vec::default(),
             traces: Vec::default(),
             drainable: false,
+
+            #[cfg(feature = "diagnostics")]
+            diagnostics: Vec::default(),
         }
     }
 
@@ -116,5 +174,11 @@ impl LogIdEntry {
     /// Meaning that no more additional information is added to this entry.
     pub fn drainable(&self) -> bool {
         self.drainable
+    }
+
+    /// Add diagnostic to given [`LogIdEntry`].
+    #[cfg(feature = "diagnostics")]
+    pub(crate) fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
     }
 }
