@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::RwLock,
-};
+use std::{collections::HashMap, sync::RwLock};
 
 use once_cell::sync::Lazy;
 
@@ -11,7 +8,7 @@ use crate::{
 };
 
 /// Map to capture [`LogId`]s, and combine all informations set
-/// for  a [`LogId`] inside a [`LogIdEntry`]. 
+/// for  a [`LogId`] inside a [`LogIdEntry`].
 pub struct LogIdMap {
     pub(crate) map: RwLock<HashMap<LogId, Vec<LogIdEntry>>>,
     last_log_id: RwLock<LogId>,

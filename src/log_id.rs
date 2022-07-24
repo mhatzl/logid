@@ -111,50 +111,68 @@ pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, loca
         + (local_nr as u16)) as LogId
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, LogIdLevel, EventLevel};
+    use super::{get_log_id, EventLevel, LogIdLevel};
 
     #[test]
     fn create_log_id_with_error() {
         let log_id = get_log_id(0, 0, EventLevel::Error, 0);
 
-        assert_eq!(log_id.get_level(), EventLevel::Error, "Log-id levels are not equal");
+        assert_eq!(
+            log_id.get_level(),
+            EventLevel::Error,
+            "Log-id levels are not equal"
+        );
     }
 
     #[test]
     fn main_log_id_set_1() {
         let log_id = get_log_id(1, 0, EventLevel::Debug, 0);
 
-        assert_eq!(log_id, 0b0100000000000000, "Log-id value not shifted correctly");
+        assert_eq!(
+            log_id, 0b0100000000000000,
+            "Log-id value not shifted correctly"
+        );
     }
 
     #[test]
     fn main_log_id_set_3() {
         let log_id = get_log_id(3, 0, EventLevel::Debug, 0);
 
-        assert_eq!(log_id, 0b1100000000000000, "Log-id value not shifted correctly");
+        assert_eq!(
+            log_id, 0b1100000000000000,
+            "Log-id value not shifted correctly"
+        );
     }
 
     #[test]
     fn sub_log_id_set_3() {
         let log_id = get_log_id(0, 3, EventLevel::Debug, 0);
 
-        assert_eq!(log_id, 0b0000110000000000, "Log-id value not shifted correctly");
+        assert_eq!(
+            log_id, 0b0000110000000000,
+            "Log-id value not shifted correctly"
+        );
     }
 
     #[test]
     fn local_log_id_set_3() {
         let log_id = get_log_id(0, 0, EventLevel::Debug, 3);
 
-        assert_eq!(log_id, 0b0000000000000011, "Log-id value not shifted correctly");
+        assert_eq!(
+            log_id, 0b0000000000000011,
+            "Log-id value not shifted correctly"
+        );
     }
 
     #[test]
     fn log_id_level_set_warning() {
         let log_id = get_log_id(0, 0, EventLevel::Warn, 0);
 
-        assert_eq!(log_id, 0b0000001000000000, "Log-id value not shifted correctly");
+        assert_eq!(
+            log_id, 0b0000001000000000,
+            "Log-id value not shifted correctly"
+        );
     }
 }

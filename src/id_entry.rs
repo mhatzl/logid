@@ -23,10 +23,7 @@ impl Origin {
 impl From<&Origin> for String {
     /// Outputs given [`Origin`] as `file="<filename>", line=<line number>`.
     fn from(origin: &Origin) -> Self {
-        format!(
-            "file=\"{}\", line={}",
-            origin.filename, origin.line_nr
-        )
+        format!("file=\"{}\", line={}", origin.filename, origin.line_nr)
     }
 }
 
@@ -83,9 +80,9 @@ impl LogIdEntry {
 
     /// Add additional information to given [`LogIdEntry`].
     /// The destination depends on the given [`tracing::Level`].
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `level` - [tracing::Level`] defining the destination of the addon
     /// * `addon` - the additional information that is added to the [`LogIdEntry`]
     pub(crate) fn add_addon(&mut self, level: &tracing::Level, addon: String) {
