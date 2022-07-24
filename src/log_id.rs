@@ -99,11 +99,11 @@ const EVENT_LEVEL_SHIFT: i16 = 8;
 pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, local_nr: u8) -> LogId {
     let event_level_number: u16 = event_level as u16;
 
-    // Id = 0 is not allowed
-    //
-    // TODO: needs unstable "panic!() in const fn" feature. Uncomment after feature is in stable
-    //panic!((main_grp == 0) && (sub_grp == 0) && (event_level == 0) && (local_nr == 0), "Log-id `0` is not allowed!");
-    //panic!((main_grp >= 2^2) || (sub_grp >= 2^4), "At least one log-id subrange is invalid.");
+    if (main_grp == 0) && (sub_grp == 0) && (event_level_number == 0) && (local_nr == 0) {
+        panic!("Log-id `0` is not allowed!");
+    } else if (main_grp > 3) || (sub_grp > 15) {
+        panic!("At least one log-id subrange is invalid.");
+    }
 
     (((main_grp as u16) << 14)
         + ((sub_grp as u16) << 10)
@@ -175,4 +175,29 @@ mod tests {
             "Log-id value not shifted correctly"
         );
     }
+
+    #[test]
+    #[should_panic(expected = "Log-id `0` is not allowed!")]
+    fn invalid_log_id_set() {
+        let _log_id = get_log_id(0, 0, EventLevel::Debug, 0);
+
+        unreachable!("Should have panicked");
+    }
+
+    #[test]
+    #[should_panic(expected = "At least one log-id subrange is invalid.")]
+    fn log_id_main_out_of_bounds() {
+        let _log_id = get_log_id(4, 0, EventLevel::Debug, 1);
+
+        unreachable!("Should have panicked");
+    }
+
+    #[test]
+    #[should_panic(expected = "At least one log-id subrange is invalid.")]
+    fn log_id_sub_out_of_bounds() {
+        let _log_id = get_log_id(0, 16, EventLevel::Debug, 1);
+
+        unreachable!("Should have panicked");
+    }
+
 }
