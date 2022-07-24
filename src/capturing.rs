@@ -174,17 +174,17 @@ impl<'a> MappedLogId<'a> {
 
     /// Finalizing a [`MappedLogId`] marks the map entry that
     /// no more information will be added to it.
-    /// 
+    ///
     /// Besides the [`LogId`], also the [`Origin`] of the [`LogIdEntry`] is compared for identification.
     pub fn finalize(&self) {
         if let Some(log_map) = self.map {
             if let Ok(mut map) = log_map.map.write() {
                 if let Some(entries) = map.get_mut(&self.id) {
-                   for entry in entries {
-                       if entry.origin == self.origin {
-                         entry.finalize();
-                       }
-                   } 
+                    for entry in entries {
+                        if entry.origin == self.origin {
+                            entry.finalize();
+                        }
+                    }
                 }
             }
         }

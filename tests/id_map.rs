@@ -15,7 +15,7 @@ fn capture_single_logid() {
     let msg = "Set first log message";
     log_id.set_event(msg, file!(), line!());
 
-    let map = drain_map();
+    let map = drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -52,7 +52,7 @@ fn capture_single_logid_with_cause() {
         .set_event_with(&log_map, msg, file!(), line!())
         .add_cause(cause);
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -93,7 +93,7 @@ fn capture_single_logid_with_info() {
         .set_event_with(&log_map, msg, file!(), line!())
         .add_info(info);
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -128,7 +128,7 @@ fn capture_single_logid_with_debug() {
         .set_event_with(&log_map, msg, file!(), line!())
         .add_debug(debug);
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -167,7 +167,7 @@ fn capture_single_logid_with_trace() {
         .set_event_with(&log_map, msg, file!(), line!())
         .add_trace(trace);
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -199,7 +199,7 @@ fn capture_single_logid_with_custom_map() {
     let log_map = LogIdMap::new();
     log_id.set_event_with(&log_map, msg, file!(), line!());
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -230,7 +230,7 @@ fn capture_two_logids_with_custom_map() {
     log_id_1.set_event_with(&log_map, msg, file!(), line!());
     log_id_2.set_event_with(&log_map, msg, file!(), line!());
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert_eq!(map.len(), 2, "More than two or less events captured!");
     assert!(
@@ -268,7 +268,7 @@ fn single_logid_without_capture() {
     let log_map = LogIdMap::new();
     log_id.set_silent_event(msg, file!(), line!());
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     assert!(map.is_empty(), "Silent event captured!");
     assert!(!map.contains_key(&log_id), "Log-id inside captured map!");
@@ -285,7 +285,7 @@ fn logid_with_span() {
     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
     let _ = span.in_scope(|| log_id.set_event_with(&log_map, msg, file!(), line!()));
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     let entry = entries.last().unwrap();
@@ -298,9 +298,11 @@ fn finalize_logid_manually() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
-    log_id.set_event_with(&log_map, msg, file!(), line!()).finalize();
+    log_id
+        .set_event_with(&log_map, msg, file!(), line!())
+        .finalize();
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     assert_eq!(
@@ -311,10 +313,7 @@ fn finalize_logid_manually() {
 
     let entry = entries.last().unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
-    assert!(
-        entry.drainable(),
-        "Entry not marked as drainable"
-    );
+    assert!(entry.drainable(), "Entry not marked as drainable");
 }
 
 #[test]
@@ -322,13 +321,13 @@ fn finalize_logid_on_drop() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
-    
+
     {
         // Mapped id dropped => entry set as `drainable`
         let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
     }
 
-    let map = log_map.drain_map();
+    let map = log_map.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     assert_eq!(
@@ -339,8 +338,5 @@ fn finalize_logid_on_drop() {
 
     let entry = entries.last().unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
-    assert!(
-        entry.drainable(),
-        "Entry not marked as drainable"
-    );
+    assert!(entry.drainable(), "Entry not marked as drainable");
 }

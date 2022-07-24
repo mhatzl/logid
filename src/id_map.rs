@@ -23,7 +23,7 @@ impl Default for LogIdMap {
 }
 
 /// Drain global [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
-pub fn drain_map() -> HashMap<LogId, Vec<LogIdEntry>> {
+pub fn drain_map() -> Option<HashMap<LogId, Vec<LogIdEntry>>> {
     LOG_ID_MAP.drain_map()
 }
 
@@ -37,13 +37,53 @@ impl LogIdMap {
     }
 
     pub fn get_last_log_id(&self) -> LogId {
-        *self.last_log_id.read().unwrap()
+        match self.last_log_id.read() {
+            Ok(last) => *last,
+            Err(_) => INVALID_LOG_ID,
+        }
     }
 
     /// Drain this [`LogIdMap`]. Returning all captured [`LogId`]s of the map so far.
-    pub fn drain_map(&self) -> HashMap<LogId, Vec<LogIdEntry>> {
+    pub fn drain_map(&self) -> Option<HashMap<LogId, Vec<LogIdEntry>>> {
         //Note: Due to RWLock, mutable access to map is fine
-        let map = &mut *self.map.write().unwrap();
-        map.drain().collect()
+        match self.map.write() {
+            Ok(mut map) => {
+                return Some((*map).drain().collect());
+            }
+            Err(_) => None,
+        }
+
+        // TODO: Replace drain by `drain_filter` to exclude `LogId`s not marked as `drainable`.
+        // Needs feature https://github.com/rust-lang/rust/issues/59618
+        //
+        // map.drain_filter(|_id, entries| {
+        //     for entry in entries {
+        //         return !entry.drainable();
+        //     }
+        //     true
+        //     }
+        // );
+    }
+
+    /// Returns all captured entries for the given [`LogId`]
+    /// if all entries are safe to drain.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - the [`LogId`] used to search for map entries
+    pub fn get_entries_safe(&self, id: LogId) -> Option<Vec<LogIdEntry>> {
+        match self.map.read() {
+            Ok(map) => match (*map).get(&id) {
+                Some(entries) => {
+                    if entries.iter().all(|entry| entry.drainable()) {
+                        Some(entries.clone())
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            },
+            Err(_) => None,
+        }
     }
 }
