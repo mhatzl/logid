@@ -37,7 +37,7 @@ fn capture_single_logid() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 15),
+        Origin::new(file!(), 16),
         "Set and stored origins are not equal"
     );
 }
@@ -74,7 +74,7 @@ fn capture_single_logid_with_cause() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 50),
+        Origin::new(file!(), 52),
         "Set and stored origins are not equal"
     );
 
