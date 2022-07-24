@@ -1,6 +1,10 @@
 //! Tests drainable flag for [`LogIdEntry`], and related functions
 
-use logid::{log_id::{get_log_id, EventLevel}, id_map::LogIdMap, capturing::LogIdTracing};
+use logid::{
+    capturing::LogIdTracing,
+    id_map::LogIdMap,
+    log_id::{get_log_id, EventLevel},
+};
 
 #[test]
 fn finalize_logid_manually() {
@@ -83,7 +87,10 @@ fn entries_not_drainable() {
     // Mapped id **not** dropped => entry **not** set as `drainable`
     let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
 
-    assert!(log_map.get_entries_safe(log_id).is_none(), "Entries marked as drainable");
+    assert!(
+        log_map.get_entries_safe(log_id).is_none(),
+        "Entries marked as drainable"
+    );
 }
 
 #[test]
@@ -93,11 +100,11 @@ fn entries_not_drainable_not_removed() {
     let log_map = LogIdMap::new();
 
     {
-      // Mapped id **not** dropped => entry **not** set as `drainable`
-      let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
+        // Mapped id **not** dropped => entry **not** set as `drainable`
+        let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
 
-      let result = log_map.drain_entries_safe(log_id);
-      assert!(result.is_none(), "Entries marked as drainable");
+        let result = log_map.drain_entries_safe(log_id);
+        assert!(result.is_none(), "Entries marked as drainable");
     }
 
     // Now drainable, because out-of-scope
@@ -120,8 +127,8 @@ fn entries_drainable_and_removed() {
     let log_map = LogIdMap::new();
 
     {
-      // Mapped id dropped => entry set as `drainable`
-      let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
+        // Mapped id dropped => entry set as `drainable`
+        let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
     }
 
     let entries = log_map.drain_entries_safe(log_id).unwrap();
@@ -136,5 +143,8 @@ fn entries_drainable_and_removed() {
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert!(entry.drainable(), "Entry not marked as drainable");
 
-    assert!(log_map.get_entries_safe(log_id).is_none(), "Entries not removed from map");
+    assert!(
+        log_map.get_entries_safe(log_id).is_none(),
+        "Entries not removed from map"
+    );
 }
