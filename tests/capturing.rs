@@ -15,7 +15,7 @@ fn capture_single_logid() {
 
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    log_id.set_event(msg, file!(), line!());
+    log_id.set_event(msg, file!(), line!()).finalize();
 
     let map = drain_map().unwrap();
 
@@ -52,7 +52,8 @@ fn capture_single_logid_with_cause() {
     let log_map = LogIdMap::new();
     log_id
         .set_event_with(&log_map, msg, file!(), line!())
-        .add_cause(cause);
+        .add_cause(cause)
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -93,7 +94,8 @@ fn capture_single_logid_with_info() {
     let log_map = LogIdMap::new();
     log_id
         .set_event_with(&log_map, msg, file!(), line!())
-        .add_info(info);
+        .add_info(info)
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -128,7 +130,8 @@ fn capture_single_logid_with_debug() {
     let log_map = LogIdMap::new();
     log_id
         .set_event_with(&log_map, msg, file!(), line!())
-        .add_debug(debug);
+        .add_debug(debug)
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -167,7 +170,8 @@ fn capture_single_logid_with_trace() {
     let log_map = LogIdMap::new();
     log_id
         .set_event_with(&log_map, msg, file!(), line!())
-        .add_trace(trace);
+        .add_trace(trace)
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -199,7 +203,9 @@ fn capture_single_logid_with_custom_map() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
-    log_id.set_event_with(&log_map, msg, file!(), line!());
+    log_id
+        .set_event_with(&log_map, msg, file!(), line!())
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -229,8 +235,12 @@ fn capture_two_logids_with_custom_map() {
     let log_id_2 = get_log_id(1, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
-    log_id_1.set_event_with(&log_map, msg, file!(), line!());
-    log_id_2.set_event_with(&log_map, msg, file!(), line!());
+    log_id_1
+        .set_event_with(&log_map, msg, file!(), line!())
+        .finalize();
+    log_id_2
+        .set_event_with(&log_map, msg, file!(), line!())
+        .finalize();
 
     let map = log_map.drain_map().unwrap();
 
@@ -268,12 +278,9 @@ fn single_logid_without_capture() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
-    log_id.set_silent_event(msg, file!(), line!());
+    log_id.set_silent_event(msg, file!(), line!()).finalize();
 
-    let map = log_map.drain_map().unwrap();
-
-    assert!(map.is_empty(), "Silent event captured!");
-    assert!(!map.contains_key(&log_id), "Log-id inside captured map!");
+    assert!(log_map.drain_map().is_none(), "Map has entries");
 }
 
 #[test]
@@ -285,7 +292,11 @@ fn logid_with_span() {
     let msg = "Set first log message";
     let log_map = LogIdMap::new();
     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
-    let _ = span.in_scope(|| log_id.set_event_with(&log_map, msg, file!(), line!()));
+    let _ = span.in_scope(|| {
+        log_id
+            .set_event_with(&log_map, msg, file!(), line!())
+            .finalize()
+    });
 
     let map = log_map.drain_map().unwrap();
 

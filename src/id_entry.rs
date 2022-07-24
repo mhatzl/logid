@@ -34,7 +34,7 @@ impl core::fmt::Display for Origin {
 }
 
 /// Structure to capture all messages set for a log-id.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct LogIdEntry {
     /// The log-id
     pub id: LogId,
@@ -73,7 +73,11 @@ impl LogIdEntry {
             } else {
                 "event not in span"
             },
-            ..Default::default()
+            causes: Vec::default(),
+            infos: Vec::default(),
+            debugs: Vec::default(),
+            traces: Vec::default(),
+            drainable: false,
         }
     }
 

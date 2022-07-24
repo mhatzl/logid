@@ -30,10 +30,12 @@ map may be used to capture all set `LogId`s with their additional information.
 It is possible to use the built-in map of the `logid` crate, or provide a custom one
 for more control.
 
-The map may at some point be drained. All captured `LogId`s so far are
-returned, and the map is freed.
+The map may at some point be drained. All captured entries of set `LogId`s so far that were finalized are
+returned, and removed from the map. `MappedLogId`s are finalized either manually using `finalize()`,
+or automatically after a `MappedLogId` goes out of scope.
 
-**Note:** Entries in the map may still receive additional information, so it is not known if it is safe to drain a map during program execution.
+Finalizing means that no more information will be added to a `MappedLogId`, making
+an entry safe to inspect. An entry that was finalized is marked as `drainable`.
 
 ## Using `logid`
 
@@ -62,7 +64,7 @@ fn my_func() -> Result<usize, LogId> {
 
   // on error
   Err(SOME_ERROR.set_event("Some error message", file!(), line!())
-      .add_cause("Cause of error -> unknown").id()  
+      .add_cause("Cause of error -> unknown").finalize()  
   )
 }
 ```

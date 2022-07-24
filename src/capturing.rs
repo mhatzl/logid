@@ -176,18 +176,28 @@ impl<'a> MappedLogId<'a> {
     /// no more information will be added to it.
     ///
     /// Besides the [`LogId`], also the [`Origin`] of the [`LogIdEntry`] is compared for identification.
-    pub fn finalize(&self) {
+    pub fn finalize(&self) -> LogId {
+        let mut finalized = false;
         if let Some(log_map) = self.map {
             if let Ok(mut map) = log_map.map.write() {
                 if let Some(entries) = map.get_mut(&self.id) {
                     for entry in entries {
                         if entry.origin == self.origin {
                             entry.finalize();
+                            finalized = true;
                         }
                     }
                 }
             }
+            // flag used to shorten access to write-lock
+            if finalized {
+                if let Ok(mut last_id) = log_map.last_finalized_id.write() {
+                    *last_id = self.id;
+                }
+            }
         }
+
+        self.id
     }
 }
 
