@@ -86,4 +86,27 @@ impl LogIdMap {
             Err(_) => None,
         }
     }
+
+    /// Drains all captured entries for the given [`LogId`]
+    /// if all entries are safe to drain.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - the [`LogId`] used to search for map entries
+    pub fn drain_entries_safe(&self, id: LogId) -> Option<Vec<LogIdEntry>> {
+        match self.map.write() {
+            Ok(mut map) => match (*map).remove(&id) {
+                Some(entries) => {
+                    if entries.iter().all(|entry| entry.drainable()) {
+                        Some(entries)
+                    } else {
+                        map.insert(id, entries);
+                        None
+                    }
+                }
+                None => None,
+            },
+            Err(_) => None,
+        }
+    }
 }

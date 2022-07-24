@@ -1,3 +1,5 @@
+//! Tests capturing functionalities
+
 use logid::{
     capturing::LogIdTracing,
     id_entry::Origin,
@@ -37,7 +39,7 @@ fn capture_single_logid() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 16),
+        Origin::new(file!(), 18),
         "Set and stored origins are not equal"
     );
 }
@@ -74,7 +76,7 @@ fn capture_single_logid_with_cause() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 52),
+        Origin::new(file!(), 54),
         "Set and stored origins are not equal"
     );
 
@@ -291,52 +293,4 @@ fn logid_with_span() {
     let entry = entries.last().unwrap();
 
     assert_eq!(entry.span, SPAN_NAME, "Span names are not equal");
-}
-
-#[test]
-fn finalize_logid_manually() {
-    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
-    let msg = "Set first log message";
-    let log_map = LogIdMap::new();
-    log_id
-        .set_event_with(&log_map, msg, file!(), line!())
-        .finalize();
-
-    let map = log_map.drain_map().unwrap();
-
-    let entries = map.get(&log_id).unwrap();
-    assert_eq!(
-        entries.len(),
-        1,
-        "More than one or no entry for the same log-id"
-    );
-
-    let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
-    assert!(entry.drainable(), "Entry not marked as drainable");
-}
-
-#[test]
-fn finalize_logid_on_drop() {
-    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
-    let msg = "Set first log message";
-    let log_map = LogIdMap::new();
-
-    {
-        // Mapped id dropped => entry set as `drainable`
-        let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
-    }
-
-    let map = log_map.drain_map().unwrap();
-
-    let entries = map.get(&log_id).unwrap();
-    assert_eq!(
-        entries.len(),
-        1,
-        "More than one or no entry for the same log-id"
-    );
-
-    let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
-    assert!(entry.drainable(), "Entry not marked as drainable");
 }
