@@ -54,6 +54,10 @@ pub struct LogIdEntry {
     pub origin: Origin,
     /// Name of the span that was current when the log-id event was set
     pub span: &'static str,
+
+    /// Flag to inform that an entry may be safely drained.
+    /// This is the case, when no more information is added to the entry.
+    drainable: bool,
 }
 
 impl LogIdEntry {
@@ -96,5 +100,17 @@ impl LogIdEntry {
         };
 
         addons.push(addon);
+    }
+
+    /// Finalizing an entry sets the `drainable` flag,
+    /// and marks that no more information will be added to this entry.
+    pub(crate) fn finalize(&mut self) {
+        self.drainable = true;
+    }
+
+    /// Returns `true` if the entry is safe to drain.
+    /// Meaning that no more additional information is added to this entry.
+    pub fn drainable(&self) -> bool {
+        self.drainable
     }
 }

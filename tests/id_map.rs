@@ -263,14 +263,12 @@ fn capture_two_logids_with_custom_map() {
 
 #[test]
 fn single_logid_without_capture() {
-    // Make sure global map is empty
-    let _ = drain_map();
-
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
+    let log_map = LogIdMap::new();
     log_id.set_silent_event(msg, file!(), line!());
 
-    let map = drain_map();
+    let map = log_map.drain_map();
 
     assert!(map.is_empty(), "Silent event captured!");
     assert!(!map.contains_key(&log_id), "Log-id inside captured map!");
@@ -278,21 +276,71 @@ fn single_logid_without_capture() {
 
 #[test]
 fn logid_with_span() {
-    // Make sure global map is empty
-    let _ = drain_map();
-
     tracing_subscriber::fmt::init();
+    const SPAN_NAME: &str = "mySpan";
 
     let log_id = get_log_id(0, 0, EventLevel::Info, 2);
     let msg = "Set first log message";
-    const SPAN_NAME: &str = "mySpan";
+    let log_map = LogIdMap::new();
     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
-    let _ = span.in_scope(|| log_id.set_event(msg, file!(), line!()));
+    let _ = span.in_scope(|| log_id.set_event_with(&log_map, msg, file!(), line!()));
 
-    let map = drain_map();
+    let map = log_map.drain_map();
 
     let entries = map.get(&log_id).unwrap();
     let entry = entries.last().unwrap();
 
     assert_eq!(entry.span, SPAN_NAME, "Span names are not equal");
+}
+
+#[test]
+fn finalize_logid_manually() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg = "Set first log message";
+    let log_map = LogIdMap::new();
+    log_id.set_event_with(&log_map, msg, file!(), line!()).finalize();
+
+    let map = log_map.drain_map();
+
+    let entries = map.get(&log_id).unwrap();
+    assert_eq!(
+        entries.len(),
+        1,
+        "More than one or no entry for the same log-id"
+    );
+
+    let entry = entries.last().unwrap();
+    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert!(
+        entry.drainable(),
+        "Entry not marked as drainable"
+    );
+}
+
+#[test]
+fn finalize_logid_on_drop() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg = "Set first log message";
+    let log_map = LogIdMap::new();
+    
+    {
+        // Mapped id dropped => entry set as `drainable`
+        let _mapped_id = log_id.set_event_with(&log_map, msg, file!(), line!());
+    }
+
+    let map = log_map.drain_map();
+
+    let entries = map.get(&log_id).unwrap();
+    assert_eq!(
+        entries.len(),
+        1,
+        "More than one or no entry for the same log-id"
+    );
+
+    let entry = entries.last().unwrap();
+    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert!(
+        entry.drainable(),
+        "Entry not marked as drainable"
+    );
 }

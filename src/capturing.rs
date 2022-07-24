@@ -1,7 +1,7 @@
 //! Offers functionality to set an event on a [`LogId`] and capture its content in a [`LogIdMap`].
 
 use crate::{
-    id_entry::LogIdEntry,
+    id_entry::{LogIdEntry, Origin},
     id_map::{LogIdMap, LOG_ID_MAP},
     log_id::{EventLevel, LogId},
 };
@@ -74,6 +74,7 @@ impl LogIdTracing for LogId {
         line_nr: u32,
     ) -> MappedLogId<'a> {
         let entry = trace_entry_creation(self, msg, filename, line_nr);
+        let origin = entry.origin.clone();
 
         let update_map = log_map.map.write();
         if let Ok(mut map) = update_map {
@@ -87,6 +88,7 @@ impl LogIdTracing for LogId {
 
         MappedLogId {
             id: self,
+            origin,
             map: Some(log_map),
         }
     }
@@ -96,6 +98,7 @@ impl LogIdTracing for LogId {
 
         MappedLogId {
             id: id_entry.id,
+            origin: id_entry.origin,
             map: None,
         }
     }
@@ -104,11 +107,19 @@ impl LogIdTracing for LogId {
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 pub struct MappedLogId<'a> {
     id: LogId,
+    origin: Origin,
     map: Option<&'a LogIdMap>,
 }
 
+impl<'a> Drop for MappedLogId<'a> {
+    /// [`MappedLogId`] is finalized on drop.
+    fn drop(&mut self) {
+        self.finalize();
+    }
+}
+
 impl<'a> MappedLogId<'a> {
-    // Returns the [`LogId`] of the [`MappedLogId`].
+    /// Returns the [`LogId`] of the [`MappedLogId`].
     pub fn id(&self) -> LogId {
         self.id
     }
@@ -159,6 +170,24 @@ impl<'a> MappedLogId<'a> {
         tracing::trace!("{}(addon): {}", self.id, msg);
         add_addon_to_map(&self, msg, &tracing::Level::TRACE);
         self
+    }
+
+    /// Finalizing a [`MappedLogId`] marks the map entry that
+    /// no more information will be added to it.
+    /// 
+    /// Besides the [`LogId`], also the [`Origin`] of the [`LogIdEntry`] is compared for identification.
+    pub fn finalize(&self) {
+        if let Some(log_map) = self.map {
+            if let Ok(mut map) = log_map.map.write() {
+                if let Some(entries) = map.get_mut(&self.id) {
+                   for entry in entries {
+                       if entry.origin == self.origin {
+                         entry.finalize();
+                       }
+                   } 
+                }
+            }
+        }
     }
 }
 
