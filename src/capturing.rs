@@ -18,7 +18,7 @@ pub trait LogIdTracing {
     /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
     /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a>;
+    fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId;
 
     /// Set an event for a [`LogId`] using a given [`LogIdMap`].
     ///
@@ -28,13 +28,13 @@ pub trait LogIdTracing {
     /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
     /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_event_with<'a>(
+    fn set_event_with(
         self,
-        log_map: &'a LogIdMap,
+        log_map: &'static LogIdMap,
         msg: &str,
         filename: &str,
         line_nr: u32,
-    ) -> MappedLogId<'a>;
+    ) -> MappedLogId;
 
     /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
     ///
@@ -43,7 +43,7 @@ pub trait LogIdTracing {
     /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
     /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_silent_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a>;
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId;
 }
 
 /// Traces a [`LogIdEntry`] creation.
@@ -65,17 +65,17 @@ fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> L
 }
 
 impl LogIdTracing for LogId {
-    fn set_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a> {
+    fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId {
         self.set_event_with(&*LOG_ID_MAP, msg, filename, line_nr)
     }
 
-    fn set_event_with<'a>(
+    fn set_event_with(
         self,
-        log_map: &'a LogIdMap,
+        log_map: &'static LogIdMap,
         msg: &str,
         filename: &str,
         line_nr: u32,
-    ) -> MappedLogId<'a> {
+    ) -> MappedLogId {
         let entry = trace_entry_creation(self, msg, filename, line_nr);
         let origin = entry.origin.clone();
 
@@ -96,7 +96,7 @@ impl LogIdTracing for LogId {
         }
     }
 
-    fn set_silent_event<'a>(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId<'a> {
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId {
         let id_entry = trace_entry_creation(self, msg, filename, line_nr);
 
         MappedLogId {
@@ -108,20 +108,21 @@ impl LogIdTracing for LogId {
 }
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
-pub struct MappedLogId<'a> {
+#[derive(Clone)]
+pub struct MappedLogId {
     id: LogId,
     origin: Origin,
-    map: Option<&'a LogIdMap>,
+    map: Option<&'static LogIdMap>,
 }
 
-impl<'a> Drop for MappedLogId<'a> {
+impl Drop for MappedLogId {
     /// [`MappedLogId`] is finalized on drop.
     fn drop(&mut self) {
         self.finalize();
     }
 }
 
-impl<'a> std::fmt::Debug for MappedLogId<'a> {
+impl std::fmt::Debug for MappedLogId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MappedLogId")
             .field("id", &self.id)
@@ -130,7 +131,7 @@ impl<'a> std::fmt::Debug for MappedLogId<'a> {
     }
 }
 
-impl<'a> MappedLogId<'a> {
+impl MappedLogId {
     /// Returns the [`LogId`] of the [`MappedLogId`].
     pub fn id(&self) -> LogId {
         self.id

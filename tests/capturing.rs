@@ -6,6 +6,7 @@ use logid::{
     id_map::{drain_map, LogIdMap},
     log_id::{get_log_id, EventLevel},
 };
+use once_cell::sync::Lazy;
 
 #[test]
 fn capture_single_logid() {
@@ -39,7 +40,7 @@ fn capture_single_logid() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 18),
+        Origin::new(file!(), 19),
         "Set and stored origins are not equal"
     );
 }
@@ -50,13 +51,13 @@ fn capture_single_logid_with_cause() {
     let log_id = get_log_id(0, 0, EventLevel::Warn, 1);
     let msg = "Set first log message";
     let cause = "Something caused this log-id";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .add_cause(cause)
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -78,7 +79,7 @@ fn capture_single_logid_with_cause() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 55),
+        Origin::new(file!(), 56),
         "Set and stored origins are not equal"
     );
 
@@ -92,13 +93,13 @@ fn capture_single_logid_with_info() {
     let log_id = get_log_id(0, 1, EventLevel::Info, 1);
     let msg = "Set first log message";
     let info = "Additional info for this log-id";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .add_info(info)
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -128,13 +129,13 @@ fn capture_single_logid_with_debug() {
     let log_id = get_log_id(1, 1, EventLevel::Debug, 0);
     let msg = "Set first log message";
     let debug = "Additional debug info for this log-id";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .add_debug(debug)
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -168,13 +169,13 @@ fn capture_single_logid_with_trace() {
     let log_id = get_log_id(1, 1, EventLevel::Debug, 0);
     let msg = "Set first log message";
     let trace = "Additional debug info for this log-id";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .add_trace(trace)
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -203,12 +204,12 @@ fn capture_single_logid_with_trace() {
 fn capture_single_logid_with_custom_map() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -235,15 +236,15 @@ fn capture_two_logids_with_custom_map() {
     let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
     let log_id_2 = get_log_id(1, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id_1
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .finalize();
     log_id_2
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     assert_eq!(map.len(), 2, "More than two or less events captured!");
     assert!(
@@ -291,15 +292,15 @@ fn logid_with_span() {
 
     let log_id = get_log_id(0, 0, EventLevel::Info, 2);
     let msg = "Set first log message";
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
     let _ = span.in_scope(|| {
         log_id
-            .set_event_with(&log_map, msg, file!(), line!())
+            .set_event_with(&LOG_MAP, msg, file!(), line!())
             .finalize()
     });
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     let entry = entries.last().unwrap();

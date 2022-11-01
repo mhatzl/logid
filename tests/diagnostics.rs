@@ -7,6 +7,8 @@ use logid::{
     id_map::LogIdMap,
     log_id::{get_log_id, EventLevel},
 };
+#[cfg(feature = "diagnostics")]
+use once_cell::sync::Lazy;
 
 #[cfg(feature = "diagnostics")]
 #[test]
@@ -27,13 +29,13 @@ fn capture_single_logid_with_diagnostics() {
         tags: [DiagnosticTag::Deprecated].into(),
     };
 
-    let log_map = LogIdMap::new();
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     log_id
-        .set_event_with(&log_map, msg, file!(), line!())
+        .set_event_with(&LOG_MAP, msg, file!(), line!())
         .add_diagnostic(diagnostics.clone())
         .finalize();
 
-    let map = log_map.drain_map().unwrap();
+    let map = LOG_MAP.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     let entry = entries.last().unwrap();
