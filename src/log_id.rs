@@ -69,8 +69,16 @@ impl LogIdLevel for LogId {
     }
 }
 
+/// The number of bits of a log-id.
+/// 
+/// **Note:** The restriction to 16 bit is used to get support for logid on all platforms.
+const LOG_ID_BIT_RANGE: i16 = 16;
+/// Bit shift in the log-id to place the main group value
+const MAIN_GRP_SHIFT: i16 = 12;
+/// Bit shift in the log-id to place the sub group value
+const SUB_GRP_SHIFT: i16 = 8;
 /// Bit shift in the log-id to place the [`EventLevel`] value
-const EVENT_LEVEL_SHIFT: i16 = 8;
+const EVENT_LEVEL_SHIFT: i16 = 6;
 
 /// Returns a 16-bit log-id that is used to identify a log-id message across a project.
 /// The log-id is a unique unsigned integer value that is identified by bit shifting given group numbers and event level.
@@ -78,14 +86,14 @@ const EVENT_LEVEL_SHIFT: i16 = 8;
 ///
 /// The log-id bits are represented as follows:
 ///
-/// `16-15 bit = main group | 14-11 bit = sub group | 10-9 bit = event level | remaining 8 bit = local number`
+/// `16-13 bit = main group | 12-9 bit = sub group | 8-7 bit = event level | remaining 6 bit = local number`
 ///
 /// # Arguments
 ///
-/// * `main_grp` - main group the log-id is assigned to (possible range: 0 .. 3)
+/// * `main_grp` - main group the log-id is assigned to (possible range: 0 .. 15)
 /// * `sub_grp` - sub group the log-id is assigned to (possible range: 0 .. 15)
 /// * `log_kind` - the ['EventLevel'] of the log-id
-/// * `local_nr` - the local number of the log-id (possible range: 0 .. 255)
+/// * `local_nr` - the local number of the log-id (possible range: 0 .. 63)
 ///
 /// # Example
 ///
@@ -93,20 +101,24 @@ const EVENT_LEVEL_SHIFT: i16 = 8;
 /// use logid::log_id::{get_log_id, EventLevel};
 ///
 /// assert_eq!(get_log_id(0, 0, EventLevel::Debug, 1), 1);
-/// assert_eq!(get_log_id(1, 0, EventLevel::Error, 1), 17153);
-/// assert_eq!(get_log_id(3, 15, EventLevel::Error, 255), 65535);
+/// assert_eq!(get_log_id(1, 0, EventLevel::Error, 1), 4289);
+/// assert_eq!(get_log_id(15, 15, EventLevel::Error, 63), 65535);
 /// ~~~
 pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, local_nr: u8) -> LogId {
     let event_level_number: u16 = event_level as u16;
 
     if (main_grp == 0) && (sub_grp == 0) && (event_level_number == 0) && (local_nr == 0) {
         panic!("Log-id `0` is not allowed!");
-    } else if (main_grp > 3) || (sub_grp > 15) {
-        panic!("At least one log-id subrange is invalid.");
+    } else if main_grp >= (1 << (LOG_ID_BIT_RANGE - MAIN_GRP_SHIFT)) {
+        panic!("Given main group is too big for a valid log-id.");
+    } else if sub_grp >= (1 << (MAIN_GRP_SHIFT - SUB_GRP_SHIFT)) {
+        panic!("Given sub group is too big for a valid log-id.");
+    } else if local_nr >= (1 << EVENT_LEVEL_SHIFT) {
+        panic!("Given local number is too big for a valid log-id.");
     }
 
-    (((main_grp as u16) << 14)
-        + ((sub_grp as u16) << 10)
+    (((main_grp as u16) << MAIN_GRP_SHIFT)
+        + ((sub_grp as u16) << SUB_GRP_SHIFT)
         + (event_level_number << EVENT_LEVEL_SHIFT)
         + (local_nr as u16)) as LogId
 }
@@ -131,27 +143,27 @@ mod tests {
         let log_id = get_log_id(1, 0, EventLevel::Debug, 0);
 
         assert_eq!(
-            log_id, 0b0100000000000000,
+            log_id, 0b0001000000000000,
             "Log-id value not shifted correctly"
         );
     }
 
     #[test]
     fn main_log_id_set_3() {
-        let log_id = get_log_id(3, 0, EventLevel::Debug, 0);
+        let log_id = get_log_id(15, 0, EventLevel::Debug, 0);
 
         assert_eq!(
-            log_id, 0b1100000000000000,
+            log_id, 0b1111000000000000,
             "Log-id value not shifted correctly"
         );
     }
 
     #[test]
     fn sub_log_id_set_3() {
-        let log_id = get_log_id(0, 3, EventLevel::Debug, 0);
+        let log_id = get_log_id(0, 15, EventLevel::Debug, 0);
 
         assert_eq!(
-            log_id, 0b0000110000000000,
+            log_id, 0b0000111100000000,
             "Log-id value not shifted correctly"
         );
     }
@@ -171,7 +183,7 @@ mod tests {
         let log_id = get_log_id(0, 0, EventLevel::Warn, 0);
 
         assert_eq!(
-            log_id, 0b0000001000000000,
+            log_id, 0b0000000010000000,
             "Log-id value not shifted correctly"
         );
     }
@@ -185,17 +197,25 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "At least one log-id subrange is invalid.")]
+    #[should_panic(expected = "Given main group is too big for a valid log-id.")]
     fn log_id_main_out_of_bounds() {
-        let _log_id = get_log_id(4, 0, EventLevel::Debug, 1);
+        let _log_id = get_log_id(16, 0, EventLevel::Debug, 1);
 
         unreachable!("Should have panicked");
     }
 
     #[test]
-    #[should_panic(expected = "At least one log-id subrange is invalid.")]
+    #[should_panic(expected = "Given sub group is too big for a valid log-id.")]
     fn log_id_sub_out_of_bounds() {
         let _log_id = get_log_id(0, 16, EventLevel::Debug, 1);
+
+        unreachable!("Should have panicked");
+    }
+
+    #[test]
+    #[should_panic(expected = "Given local number is too big for a valid log-id.")]
+    fn log_id_local_nr_out_of_bounds() {
+        let _log_id = get_log_id(0, 0, EventLevel::Debug, 64);
 
         unreachable!("Should have panicked");
     }
