@@ -221,7 +221,11 @@ mod tests {
             log_id, 0b0000000000111111,
             "Log-id value not shifted correctly"
         );
-        assert_eq!(log_id.get_local_nr(), 63, "Did not get correct local number");
+        assert_eq!(
+            log_id.get_local_nr(),
+            63,
+            "Did not get correct local number"
+        );
     }
 
     #[test]
