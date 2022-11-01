@@ -9,7 +9,7 @@ pub type LogId = isize;
 pub const INVALID_LOG_ID: LogId = 0;
 
 /// Event level a log-id may represent.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum EventLevel {
     /// Log-id debug kind
     Debug = 0,

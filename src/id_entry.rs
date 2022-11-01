@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use crate::log_id::{EventLevel, LogId, LogIdLevel};
 
 /// Structure representing the origin of a log-id.
-#[derive(Debug, Default, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct Origin {
     /// Filename where the log-id was set
     filename: String,
