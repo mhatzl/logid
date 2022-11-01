@@ -123,7 +123,10 @@ impl<'a> Drop for MappedLogId<'a> {
 
 impl<'a> std::fmt::Debug for MappedLogId<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MappedLogId").field("id", &self.id).field("origin", &self.origin).finish()
+        f.debug_struct("MappedLogId")
+            .field("id", &self.id)
+            .field("origin", &self.origin)
+            .finish()
     }
 }
 
