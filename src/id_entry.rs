@@ -3,7 +3,7 @@
 #[cfg(feature = "diagnostics")]
 use std::path::PathBuf;
 
-use crate::log_id::{EventLevel, LogId, LogIdLevel};
+use crate::log_id::{EventLevel, LogId, LogIdParts};
 
 /// Structure representing the origin of a log-id.
 #[derive(Debug, Default, PartialEq, Eq, Clone)]

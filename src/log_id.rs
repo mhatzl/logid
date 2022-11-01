@@ -44,12 +44,18 @@ impl From<&tracing::Level> for EventLevel {
 }
 
 /// Trait needed to implement functions on [`LogId`], due to `isize` wrap.
-pub trait LogIdLevel {
+pub trait LogIdParts {
+    /// Get the main group of this log-id
+    fn get_main_grp(self) -> u8;
+    /// Get the sub group of this log-id
+    fn get_sub_grp(self) -> u8;
     /// Get the [`EventLevel`] of this log-id
     fn get_level(self) -> EventLevel;
+    /// Get the local number of this log-id
+    fn get_local_nr(self) -> u8;
 }
 
-impl LogIdLevel for LogId {
+impl LogIdParts for LogId {
     fn get_level(self) -> EventLevel {
         // get EventLevel bits
         let level = (self >> EVENT_LEVEL_SHIFT) & 3;
@@ -66,6 +72,20 @@ impl LogIdLevel for LogId {
             tracing::trace!("Invalid event level={} for id={}", level, self);
             EventLevel::Error
         }
+    }
+
+    fn get_main_grp(self) -> u8 {
+        (self >> MAIN_GRP_SHIFT).try_into().unwrap_or(0)
+    }
+
+    fn get_sub_grp(self) -> u8 {
+        // 15 to get 1111
+        ((self >> SUB_GRP_SHIFT) & 15).try_into().unwrap()
+    }
+
+    fn get_local_nr(self) -> u8 {
+        // 63 to get 111111
+        ((self) & 63).try_into().unwrap()
     }
 }
 
@@ -125,7 +145,7 @@ pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, loca
 
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, EventLevel, LogIdLevel};
+    use super::{get_log_id, EventLevel, LogIdParts};
 
     #[test]
     fn create_log_id_with_error() {
@@ -139,47 +159,73 @@ mod tests {
     }
 
     #[test]
-    fn main_log_id_set_1() {
+    fn main_set_1() {
         let log_id = get_log_id(1, 0, EventLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b0001000000000000,
             "Log-id value not shifted correctly"
         );
+        assert_eq!(log_id.get_main_grp(), 1, "Did not get correct main group");
     }
 
     #[test]
-    fn main_log_id_set_3() {
+    fn main_set_15() {
         let log_id = get_log_id(15, 0, EventLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b1111000000000000,
             "Log-id value not shifted correctly"
         );
+        assert_eq!(log_id.get_main_grp(), 15, "Did not get correct main group");
     }
 
     #[test]
-    fn sub_log_id_set_3() {
+    fn sub_set_4() {
+        let log_id = get_log_id(0, 4, EventLevel::Debug, 0);
+
+        assert_eq!(
+            log_id, 0b0000010000000000,
+            "Log-id value not shifted correctly"
+        );
+        assert_eq!(log_id.get_sub_grp(), 4, "Did not get correct sub group");
+    }
+
+    #[test]
+    fn sub_set_15() {
         let log_id = get_log_id(0, 15, EventLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b0000111100000000,
             "Log-id value not shifted correctly"
         );
+        assert_eq!(log_id.get_sub_grp(), 15, "Did not get correct sub group");
     }
 
     #[test]
-    fn local_log_id_set_3() {
+    fn local_set_3() {
         let log_id = get_log_id(0, 0, EventLevel::Debug, 3);
 
         assert_eq!(
             log_id, 0b0000000000000011,
             "Log-id value not shifted correctly"
         );
+        assert_eq!(log_id.get_local_nr(), 3, "Did not get correct local number");
     }
 
     #[test]
-    fn log_id_level_set_warning() {
+    fn local_set_63() {
+        let log_id = get_log_id(0, 0, EventLevel::Debug, 63);
+
+        assert_eq!(
+            log_id, 0b0000000000111111,
+            "Log-id value not shifted correctly"
+        );
+        assert_eq!(log_id.get_local_nr(), 63, "Did not get correct local number");
+    }
+
+    #[test]
+    fn level_set_warning() {
         let log_id = get_log_id(0, 0, EventLevel::Warn, 0);
 
         assert_eq!(
@@ -198,7 +244,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Given main group is too big for a valid log-id.")]
-    fn log_id_main_out_of_bounds() {
+    fn main_out_of_bounds() {
         let _log_id = get_log_id(16, 0, EventLevel::Debug, 1);
 
         unreachable!("Should have panicked");
@@ -206,7 +252,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Given sub group is too big for a valid log-id.")]
-    fn log_id_sub_out_of_bounds() {
+    fn sub_out_of_bounds() {
         let _log_id = get_log_id(0, 16, EventLevel::Debug, 1);
 
         unreachable!("Should have panicked");
@@ -214,7 +260,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Given local number is too big for a valid log-id.")]
-    fn log_id_local_nr_out_of_bounds() {
+    fn local_nr_out_of_bounds() {
         let _log_id = get_log_id(0, 0, EventLevel::Debug, 64);
 
         unreachable!("Should have panicked");
