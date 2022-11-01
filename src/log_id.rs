@@ -70,7 +70,7 @@ impl LogIdLevel for LogId {
 }
 
 /// The number of bits of a log-id.
-/// 
+///
 /// **Note:** The restriction to 16 bit is used to get support for logid on all platforms.
 const LOG_ID_BIT_RANGE: i16 = 16;
 /// Bit shift in the log-id to place the main group value
