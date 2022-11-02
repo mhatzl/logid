@@ -1,7 +1,7 @@
 //! Contains the [`LogIdMap`] definition used to capture [`LogId`]s and their [`LogIdEntry`]s.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{RwLock, RwLockWriteGuard},
 };
 
@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 
 use crate::{
     id_entry::LogIdEntry,
-    log_id::{LogId, INVALID_LOG_ID},
+    log_id::{LogId, INVALID_LOG_ID}, capturing::MappedLogId,
 };
 
 /// Map to capture [`LogId`]s, and combine all informations set
@@ -18,7 +18,7 @@ pub struct LogIdMap {
     /// Map to capture entries for set [`LogId`]s.
     /// Multiple entries per [`LogId`] might be possible
     /// if the [`LogId`] is used at multiple positions.
-    pub(crate) map: RwLock<HashMap<LogId, Vec<LogIdEntry>>>,
+    pub(crate) map: RwLock<HashMap<LogId, HashSet<LogIdEntry>>>,
     /// Used to keep track of the last [`LogId`] that was
     /// entered in the map, and got marked as `drainable`.
     pub(crate) last_finalized_id: RwLock<LogId>,
@@ -33,8 +33,35 @@ impl Default for LogIdMap {
 }
 
 /// Drain global [`LogIdMap`].  Returning all `drainable` entries of all captured [`LogId`]s of the map so far.
-pub fn drain_map() -> Option<HashMap<LogId, Vec<LogIdEntry>>> {
+pub fn drain_map() -> Option<HashMap<LogId, HashSet<LogIdEntry>>> {
     LOG_ID_MAP.drain_map()
+}
+
+/// Trait used to implement functions on the [`LogIdEntry`] HashSet.
+pub trait LogIdEntrySet {
+    /// Tries to get a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
+    /// 
+    /// # Arguments
+    /// 
+    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
+    fn get_logid(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry>;
+
+    /// Tries to retrieve a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
+    /// 
+    /// # Arguments
+    /// 
+    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
+    fn take_logid(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry>;
+}
+
+impl LogIdEntrySet for HashSet<LogIdEntry> {
+    fn get_logid(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry> {
+        self.get(&LogIdEntry::shallow_new(mapped_id.hash))
+    }
+
+    fn take_logid(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry> {
+        self.take(&LogIdEntry::shallow_new(mapped_id.hash))
+    }
 }
 
 impl LogIdMap {
@@ -56,7 +83,7 @@ impl LogIdMap {
     }
 
     /// Drain this [`LogIdMap`]. Returning all `drainable` entries of all captured [`LogId`]s of the map so far.
-    pub fn drain_map(&self) -> Option<HashMap<LogId, Vec<LogIdEntry>>> {
+    pub fn drain_map(&self) -> Option<HashMap<LogId, HashSet<LogIdEntry>>> {
         if let Ok(mut last) = self.last_finalized_id.write() {
             *last = INVALID_LOG_ID;
         }
@@ -92,14 +119,14 @@ impl LogIdMap {
     /// # Arguments
     ///
     /// * `id` - the [`LogId`] used to search for map entries
-    pub fn get_entries(&self, id: LogId) -> Option<Vec<LogIdEntry>> {
+    pub fn get_entries(&self, id: LogId) -> Option<HashSet<LogIdEntry>> {
         match self.map.read() {
             Ok(map) => match (*map).get(&id) {
                 Some(entries) => {
-                    let mut safe_entries: Vec<LogIdEntry> = Vec::new();
+                    let mut safe_entries: HashSet<LogIdEntry> = HashSet::new();
                     for entry in entries {
                         if entry.drainable() {
-                            safe_entries.push((*entry).clone());
+                            safe_entries.insert((*entry).clone());
                         }
                     }
                     if safe_entries.is_empty() {
@@ -121,13 +148,13 @@ impl LogIdMap {
     /// # Arguments
     ///
     /// * `id` - the [`LogId`] used to search for map entries
-    pub fn get_entries_unsafe(&self, id: LogId) -> Option<Vec<LogIdEntry>> {
+    pub fn get_entries_unsafe(&self, id: LogId) -> Option<HashSet<LogIdEntry>> {
         match self.map.read() {
             Ok(map) => match (*map).get(&id) {
                 Some(entries) => {
-                    let mut safe_entries: Vec<LogIdEntry> = Vec::new();
+                    let mut safe_entries: HashSet<LogIdEntry> = HashSet::new();
                     for entry in entries {
-                        safe_entries.push((*entry).clone());
+                        safe_entries.insert((*entry).clone());
                     }
                     if safe_entries.is_empty() {
                         None
@@ -147,7 +174,7 @@ impl LogIdMap {
     /// # Arguments
     ///
     /// * `id` - the [`LogId`] used to search for map entries
-    pub fn drain_entries(&self, id: LogId) -> Option<Vec<LogIdEntry>> {
+    pub fn drain_entries(&self, id: LogId) -> Option<HashSet<LogIdEntry>> {
         let mut drained = false;
         let res = match self.map.write() {
             Ok(mut map) => {
@@ -171,26 +198,32 @@ impl LogIdMap {
 }
 
 /// Function to drain `drainable` map entries using an aquired write-lock.
+/// 
+/// Returns set of drained entries, and `true` if all entries were drained.
 fn drain_entries(
-    write_lock_map: &mut RwLockWriteGuard<HashMap<LogId, Vec<LogIdEntry>>>,
+    write_lock_map: &mut RwLockWriteGuard<HashMap<LogId, HashSet<LogIdEntry>>>,
     id: LogId,
-) -> (Option<Vec<LogIdEntry>>, bool) {
-    let mut drained = false;
+) -> (Option<HashSet<LogIdEntry>>, bool) {
+    let mut drained = true;
     match (*write_lock_map).remove(&id) {
         Some(mut entries) => {
-            let mut safe_entries = Vec::new();
-            let mut i = 0;
-            while i < entries.len() {
-                if entries[i].drainable() {
-                    drained = true;
-                    safe_entries.push(entries.remove(i));
+            // TODO: Wait until unstable feature is supported
+            //let drained_entries = entries.drain_filter(|entry| entry.drainable()).collect();
+
+            let mut safe_entries = HashSet::new();
+            let tmp_entries : HashSet<LogIdEntry> = entries.drain().collect();
+            for entry in tmp_entries {
+                if entry.drainable() {
+                    safe_entries.insert(entry);
+                    
                 } else {
-                    i += 1;
+                    entries.insert(entry);
                 }
             }
 
             if !entries.is_empty() {
                 write_lock_map.insert(id, entries);
+                drained = false;
             }
             if safe_entries.is_empty() {
                 (None, drained)

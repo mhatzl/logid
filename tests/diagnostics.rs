@@ -3,7 +3,7 @@
 #[cfg(feature = "diagnostics")]
 use logid::{
     capturing::LogIdTracing,
-    id_entry::{Diagnostic, DiagnosticTag, Position, Range},
+    id_entry::{Diagnostic, DiagnosticTag, Position, Range, LogIdEntry},
     id_map::LogIdMap,
     log_id::{get_log_id, EventLevel},
 };
@@ -30,14 +30,15 @@ fn capture_single_logid_with_diagnostics() {
     };
 
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
+    let mapped = log_id
         .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_diagnostic(diagnostics.clone())
-        .finalize();
+        .add_diagnostic(diagnostics.clone());
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
+    let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
     let act_diagnostics = entry.diagnostics.last().unwrap();
     assert_eq!(

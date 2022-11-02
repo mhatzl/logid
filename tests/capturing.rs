@@ -3,7 +3,7 @@
 use logid::{
     capturing::LogIdTracing,
     id_entry::Origin,
-    id_map::{drain_map, LogIdMap},
+    id_map::{drain_map, LogIdMap, LogIdEntrySet},
     log_id::{get_log_id, EventLevel},
 };
 use once_cell::sync::Lazy;
@@ -16,7 +16,8 @@ fn capture_single_logid() {
 
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    log_id.set_event(msg, file!(), line!()).finalize();
+    let mapped = log_id.set_event(msg, file!(), line!());
+    mapped.finalize();
 
     let map = drain_map().unwrap();
 
@@ -30,7 +31,7 @@ fn capture_single_logid() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -52,10 +53,11 @@ fn capture_single_logid_with_cause() {
     let msg = "Set first log message";
     let cause = "Something caused this log-id";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_cause(cause)
-        .finalize();
+    let line = line!();
+    let mapped = log_id
+        .set_event_with(&LOG_MAP, msg, file!(), line)
+        .add_cause(cause);
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -69,7 +71,7 @@ fn capture_single_logid_with_cause() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -79,7 +81,7 @@ fn capture_single_logid_with_cause() {
     assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
         entry.origin,
-        Origin::new(file!(), 56),
+        Origin::new(file!(), line),
         "Set and stored origins are not equal"
     );
 
@@ -94,10 +96,10 @@ fn capture_single_logid_with_info() {
     let msg = "Set first log message";
     let info = "Additional info for this log-id";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
+    let mapped = log_id
         .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_info(info)
-        .finalize();
+        .add_info(info);
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -111,7 +113,7 @@ fn capture_single_logid_with_info() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -130,10 +132,10 @@ fn capture_single_logid_with_debug() {
     let msg = "Set first log message";
     let debug = "Additional debug info for this log-id";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
+    let mapped = log_id
         .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_debug(debug)
-        .finalize();
+        .add_debug(debug);
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -147,7 +149,7 @@ fn capture_single_logid_with_debug() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -170,10 +172,10 @@ fn capture_single_logid_with_trace() {
     let msg = "Set first log message";
     let trace = "Additional debug info for this log-id";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
+    let mapped = log_id
         .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_trace(trace)
-        .finalize();
+        .add_trace(trace);
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -187,7 +189,7 @@ fn capture_single_logid_with_trace() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -205,9 +207,9 @@ fn capture_single_logid_with_custom_map() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    let mapped = log_id
+        .set_event_with(&LOG_MAP, msg, file!(), line!());
+    mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -221,7 +223,7 @@ fn capture_single_logid_with_custom_map() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
     assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
     assert_eq!(
         entry.level,
@@ -237,12 +239,12 @@ fn capture_two_logids_with_custom_map() {
     let log_id_2 = get_log_id(1, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    log_id_1
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
-    log_id_2
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    let mapped_1 = log_id_1
+        .set_event_with(&LOG_MAP, msg, file!(), line!());
+    mapped_1.finalize();
+    let mapped_2 = log_id_2
+        .set_event_with(&LOG_MAP, msg, file!(), line!());
+    mapped_2.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();
 
@@ -262,7 +264,7 @@ fn capture_two_logids_with_custom_map() {
         1,
         "More than one or no entry for the same log-id"
     );
-    let entry_1 = entries_1.last().unwrap();
+    let entry_1 = entries_1.get_logid(&mapped_1).unwrap();
     assert_eq!(entry_1.id, log_id_1, "Set and stored log-ids are not equal");
 
     let entries_2 = map.get(&log_id_2).unwrap();
@@ -271,7 +273,7 @@ fn capture_two_logids_with_custom_map() {
         1,
         "More than one or no entry for the same log-id"
     );
-    let entry_2 = entries_2.last().unwrap();
+    let entry_2 = entries_2.get_logid(&mapped_2).unwrap();
     assert_eq!(entry_2.id, log_id_2, "Set and stored log-ids are not equal");
 }
 
@@ -294,16 +296,95 @@ fn logid_with_span() {
     let msg = "Set first log message";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
+    // Assignment only to initialize mapped => silent_event
+    let mut mapped = log_id.set_silent_event(msg, file!(), line!());
+
     let _ = span.in_scope(|| {
-        log_id
-            .set_event_with(&LOG_MAP, msg, file!(), line!())
-            .finalize()
+        mapped = log_id
+            .set_event_with(&LOG_MAP, msg, file!(), line!());
+        mapped.finalize()
     });
 
     let map = LOG_MAP.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
-    let entry = entries.last().unwrap();
+    let entry = entries.get_logid(&mapped).unwrap();
 
     assert_eq!(entry.span, SPAN_NAME, "Span names are not equal");
+}
+
+#[test]
+fn capture_same_logid_twice_with_different_origin() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg = "Set first log message";
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
+    let line_1 = line!();
+    let mapped_1 = log_id
+        .set_event_with(&LOG_MAP, msg, file!(), line_1);
+    mapped_1.finalize();
+    let line_2 = line!();
+    let mapped_2 = log_id
+        .set_event_with(&LOG_MAP, msg, file!(), line_2);
+    mapped_2.finalize();
+
+    let map = LOG_MAP.drain_map().unwrap();
+
+    assert_eq!(map.len(), 1, "More than two or less events captured!");
+    assert!(
+        map.contains_key(&log_id),
+        "Log-id not inside captured map!"
+    );
+
+    let entries = map.get(&log_id).unwrap();
+    assert_eq!(
+        entries.len(),
+        2,
+        "More than one or no entry for the same log-id"
+    );
+
+    let entry_1 = entries.get_logid(&mapped_1).unwrap();
+    assert_eq!(entry_1.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(entry_1.origin.line_nr, line_1, "Set and stored line numbers are not equal");
+
+    let entry_2 = entries.get_logid(&mapped_2).unwrap();
+    assert_eq!(entry_2.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(entry_2.origin.line_nr, line_2, "Set and stored line numbers are not equal");
+}
+
+#[test]
+fn capture_same_logid_twice_with_same_origin() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg = "Set first log message";
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
+    let line = line!();
+    let file = file!();
+    let mapped_1 = log_id
+        .set_event_with(&LOG_MAP, msg, file, line);
+    mapped_1.finalize();
+    let mapped_2 = log_id
+        .set_event_with(&LOG_MAP, msg, file, line);
+    mapped_2.finalize();
+
+    let map = LOG_MAP.drain_map().unwrap();
+
+    assert_eq!(map.len(), 1, "More than two or less events captured!");
+    assert!(
+        map.contains_key(&log_id),
+        "Log-id not inside captured map!"
+    );
+
+    let entries = map.get(&log_id).unwrap();
+    assert_eq!(
+        entries.len(),
+        2,
+        "More than one or no entry for the same log-id"
+    );
+
+    let entry_1 = entries.get_logid(&mapped_1).unwrap();
+    assert_eq!(entry_1.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(entry_1.origin.line_nr, line, "Set and stored line numbers are not equal");
+
+    let entry_2 = entries.get_logid(&mapped_2).unwrap();
+    assert_eq!(entry_2.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(entry_2.origin.line_nr, line, "Set and stored line numbers are not equal");
 }

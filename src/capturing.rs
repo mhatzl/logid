@@ -2,7 +2,7 @@
 
 use crate::{
     id_entry::{LogIdEntry, Origin},
-    id_map::{LogIdMap, LOG_ID_MAP},
+    id_map::{LogIdMap, LOG_ID_MAP, LogIdEntrySet},
     log_id::{EventLevel, LogId},
 };
 
@@ -77,12 +77,13 @@ impl LogIdTracing for LogId {
         line_nr: u32,
     ) -> MappedLogId {
         let entry = trace_entry_creation(self, msg, filename, line_nr);
+        let hash = entry.hash;
         let origin = entry.origin.clone();
 
         let update_map = log_map.map.write();
         if let Ok(mut map) = update_map {
             match map.get_mut(&self) {
-                Some(entries) => entries.push(entry),
+                Some(entries) => { entries.insert(entry); },
                 None => {
                     map.insert(self, [entry].into());
                 }
@@ -90,6 +91,7 @@ impl LogIdTracing for LogId {
         }
 
         MappedLogId {
+            hash,
             id: self,
             origin,
             map: Some(log_map),
@@ -100,6 +102,7 @@ impl LogIdTracing for LogId {
         let id_entry = trace_entry_creation(self, msg, filename, line_nr);
 
         MappedLogId {
+            hash: id_entry.hash,
             id: id_entry.id,
             origin: id_entry.origin,
             map: None,
@@ -110,8 +113,13 @@ impl LogIdTracing for LogId {
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Clone)]
 pub struct MappedLogId {
+    /// Hash to identify the exact [`LogIdEntry`] this [`MappedLogId`] is mapped to in the linked [`LogIdMap`]
+    pub(crate) hash: u64,
+    /// [`LogId`] of this [`MappedLogId`]
     id: LogId,
+    /// [`Origin`] of this [`MappedLogId`]
     origin: Origin,
+    /// [`LogIdMap`] this [`MappedLogId`] is mapped to, or none for silent events
     map: Option<&'static LogIdMap>,
 }
 
@@ -147,8 +155,9 @@ impl MappedLogId {
             if let Ok(mut map) = update_map {
                 match map.get_mut(&self.id) {
                     Some(entries) => {
-                        if let Some(last) = entries.last_mut() {
-                            last.add_cause(msg.to_string());
+                        if let Some(mut entry) = entries.take_logid(&self) {
+                            entry.add_cause(msg.to_string());
+                            entries.insert(entry);
                         };
                     }
                     None => {
@@ -195,12 +204,11 @@ impl MappedLogId {
         if let Some(log_map) = self.map {
             if let Ok(mut map) = log_map.map.write() {
                 if let Some(entries) = map.get_mut(&self.id) {
-                    for entry in entries {
-                        if entry.origin == self.origin {
-                            entry.finalize();
-                            finalized = true;
-                        }
-                    }
+                    if let Some(mut entry) = entries.take_logid(self) {
+                        entry.finalize();
+                        entries.insert(entry);
+                        finalized = true;
+                    };
                 }
             }
             // flag used to shorten access to write-lock
@@ -223,8 +231,9 @@ impl MappedLogId {
             if let Ok(mut map) = update_map {
                 match map.get_mut(&self.id) {
                     Some(entries) => {
-                        if let Some(last) = entries.last_mut() {
-                            last.add_diagnostic(diagnostic);
+                        if let Some(mut entry) = entries.take_logid(&self) {
+                            entry.add_diagnostic(diagnostic);
+                            entries.insert(entry);
                         };
                     }
                     None => {
@@ -248,8 +257,9 @@ fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) 
         if let Ok(mut map) = update_map {
             match map.get_mut(&mapped_id.id) {
                 Some(entries) => {
-                    if let Some(last) = entries.last_mut() {
-                        last.add_addon(level, msg.to_string());
+                    if let Some(mut entry) = entries.take_logid(mapped_id) {
+                        entry.add_addon(level, msg.to_string());
+                        entries.insert(entry);
                     };
                 }
                 None => {

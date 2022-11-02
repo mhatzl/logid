@@ -2,6 +2,8 @@
 
 #[cfg(feature = "diagnostics")]
 use std::path::PathBuf;
+use std::{collections::hash_map::DefaultHasher};
+use std::hash::{Hasher, Hash};
 
 use crate::log_id::{EventLevel, LogId, LogIdParts};
 
@@ -9,9 +11,9 @@ use crate::log_id::{EventLevel, LogId, LogIdParts};
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct Origin {
     /// Filename where the log-id was set
-    filename: String,
+    pub filename: String,
     /// Linenumber where the log-id was set
-    line_nr: u32,
+    pub line_nr: u32,
 }
 
 impl Origin {
@@ -38,8 +40,12 @@ impl core::fmt::Display for Origin {
 }
 
 /// Structure to capture all messages set for a log-id.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Default)]
 pub struct LogIdEntry {
+    /// The hash uniquely identifying this entry.
+    /// 
+    /// **Note:** The hash is computed using the current ThreadId and time when the entry is created, and the origin of the entry.
+    pub(crate) hash: u64,
     /// The log-id of this entry
     pub id: LogId,
     /// The level of the log-id of this entry
@@ -68,6 +74,24 @@ pub struct LogIdEntry {
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
     pub diagnostics: Vec<Diagnostic>,
+}
+
+impl PartialEq for LogIdEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+}
+
+impl Hash for LogIdEntry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash.hash(state);
+    }
+}
+
+impl LogIdEntry {
+    pub(crate) fn shallow_new(hash: u64) -> Self {
+        LogIdEntry { hash, ..Default::default() }
+    }
 }
 
 /// Diagnostic struct offering information about the original input
@@ -117,10 +141,32 @@ pub enum DiagnosticTag {
     Deprecated = 2,
 }
 
+/// This function computes the hash for a [`LogIdEntry`].
+/// 
+/// The hash is computed over filename, line_nr, the current ThreadId,
+/// and the current UTC time in nanoseconds.
+/// 
+/// # Arguments
+/// 
+/// - `filename` - the filename to use when calculating the hash
+/// - `line_nr` - the line number to use when calculating the hash
+/// 
+/// **Note:** The hash function is not cryptographically secure,
+/// but that is ok since we only need the hash to identify the entry in a map.
+fn compute_hash(filename: &str, line_nr: u32) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    hasher.write(filename.as_bytes());
+    hasher.write_u32(line_nr);
+    std::thread::current().id().hash(&mut hasher);
+    hasher.write_i64(chrono::Utc::now().timestamp_nanos());
+    hasher.finish()
+}
+
 impl LogIdEntry {
     /// Create a new [`LogIdEntry`].
     pub(crate) fn new(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Self {
         LogIdEntry {
+            hash: compute_hash(filename, line_nr),
             id,
             level: id.get_level(),
             msg: msg.to_string(),
