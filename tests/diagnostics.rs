@@ -3,7 +3,7 @@
 #[cfg(feature = "diagnostics")]
 use logid::{
     capturing::LogIdTracing,
-    id_entry::{Diagnostic, DiagnosticTag, Position, Range, LogIdEntry},
+    id_entry::{Diagnostic, DiagnosticTag, LogIdEntry, Position, Range},
     id_map::LogIdMap,
     log_id::{get_log_id, EventLevel},
 };

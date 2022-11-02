@@ -2,8 +2,9 @@
 
 use logid::{
     capturing::LogIdTracing,
-    id_map::{LogIdMap, LogIdEntrySet},
-    log_id::{get_log_id, EventLevel}, id_entry::LogIdEntry,
+    id_entry::LogIdEntry,
+    id_map::{LogIdEntrySet, LogIdMap},
+    log_id::{get_log_id, EventLevel},
 };
 use once_cell::sync::Lazy;
 
@@ -12,8 +13,7 @@ fn finalize_logid_manually() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    let mapped = log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!());
+    let mapped = log_id.set_event_with(&LOG_MAP, msg, file!(), line!());
     mapped.finalize();
 
     let map = LOG_MAP.drain_map().unwrap();

@@ -8,8 +8,9 @@ use std::{
 use once_cell::sync::Lazy;
 
 use crate::{
+    capturing::MappedLogId,
     id_entry::LogIdEntry,
-    log_id::{LogId, INVALID_LOG_ID}, capturing::MappedLogId,
+    log_id::{LogId, INVALID_LOG_ID},
 };
 
 /// Map to capture [`LogId`]s, and combine all informations set
@@ -40,16 +41,16 @@ pub fn drain_map() -> Option<HashMap<LogId, HashSet<LogIdEntry>>> {
 /// Trait used to implement functions on the [`LogIdEntry`] HashSet.
 pub trait LogIdEntrySet {
     /// Tries to get a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
     fn get_logid(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry>;
 
     /// Tries to retrieve a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
     fn take_logid(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry>;
 }
@@ -198,7 +199,7 @@ impl LogIdMap {
 }
 
 /// Function to drain `drainable` map entries using an aquired write-lock.
-/// 
+///
 /// Returns set of drained entries, and `true` if all entries were drained.
 fn drain_entries(
     write_lock_map: &mut RwLockWriteGuard<HashMap<LogId, HashSet<LogIdEntry>>>,
@@ -211,11 +212,10 @@ fn drain_entries(
             //let drained_entries = entries.drain_filter(|entry| entry.drainable()).collect();
 
             let mut safe_entries = HashSet::new();
-            let tmp_entries : HashSet<LogIdEntry> = entries.drain().collect();
+            let tmp_entries: HashSet<LogIdEntry> = entries.drain().collect();
             for entry in tmp_entries {
                 if entry.drainable() {
                     safe_entries.insert(entry);
-                    
                 } else {
                     entries.insert(entry);
                 }

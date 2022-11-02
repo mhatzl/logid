@@ -2,7 +2,7 @@
 
 use crate::{
     id_entry::{LogIdEntry, Origin},
-    id_map::{LogIdMap, LOG_ID_MAP, LogIdEntrySet},
+    id_map::{LogIdEntrySet, LogIdMap, LOG_ID_MAP},
     log_id::{EventLevel, LogId},
 };
 
@@ -83,7 +83,9 @@ impl LogIdTracing for LogId {
         let update_map = log_map.map.write();
         if let Ok(mut map) = update_map {
             match map.get_mut(&self) {
-                Some(entries) => { entries.insert(entry); },
+                Some(entries) => {
+                    entries.insert(entry);
+                }
                 None => {
                     map.insert(self, [entry].into());
                 }

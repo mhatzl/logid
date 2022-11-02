@@ -1,9 +1,9 @@
 //! Contains the [`LogIdEntry`] definition used to capture messages for a log-id.
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 #[cfg(feature = "diagnostics")]
 use std::path::PathBuf;
-use std::{collections::hash_map::DefaultHasher};
-use std::hash::{Hasher, Hash};
 
 use crate::log_id::{EventLevel, LogId, LogIdParts};
 
@@ -43,7 +43,7 @@ impl core::fmt::Display for Origin {
 #[derive(Debug, Clone, Eq, Default)]
 pub struct LogIdEntry {
     /// The hash uniquely identifying this entry.
-    /// 
+    ///
     /// **Note:** The hash is computed using the current ThreadId and time when the entry is created, and the origin of the entry.
     pub(crate) hash: u64,
     /// The log-id of this entry
@@ -90,7 +90,10 @@ impl Hash for LogIdEntry {
 
 impl LogIdEntry {
     pub(crate) fn shallow_new(hash: u64) -> Self {
-        LogIdEntry { hash, ..Default::default() }
+        LogIdEntry {
+            hash,
+            ..Default::default()
+        }
     }
 }
 
@@ -142,15 +145,15 @@ pub enum DiagnosticTag {
 }
 
 /// This function computes the hash for a [`LogIdEntry`].
-/// 
+///
 /// The hash is computed over filename, line_nr, the current ThreadId,
 /// and the current UTC time in nanoseconds.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// - `filename` - the filename to use when calculating the hash
 /// - `line_nr` - the line number to use when calculating the hash
-/// 
+///
 /// **Note:** The hash function is not cryptographically secure,
 /// but that is ok since we only need the hash to identify the entry in a map.
 fn compute_hash(filename: &str, line_nr: u32) -> u64 {
