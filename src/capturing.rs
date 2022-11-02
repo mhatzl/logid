@@ -125,6 +125,18 @@ pub struct MappedLogId {
     map: Option<&'static LogIdMap>,
 }
 
+impl PartialEq<LogId> for MappedLogId {
+    fn eq(&self, other: &LogId) -> bool {
+        self.id == *other
+    }
+}
+
+impl PartialEq<MappedLogId> for LogId {
+    fn eq(&self, other: &MappedLogId) -> bool {
+        *self == other.id
+    }
+}
+
 impl Drop for MappedLogId {
     /// [`MappedLogId`] is finalized on drop.
     fn drop(&mut self) {

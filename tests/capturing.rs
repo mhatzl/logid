@@ -285,6 +285,17 @@ fn single_logid_without_capture() {
 }
 
 #[test]
+fn logid_equal_to_mapped_id() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg = "Set first log message";
+    let mapped = log_id.set_silent_event(msg, file!(), line!());
+    mapped.finalize();
+
+    assert!(mapped == log_id, "LogId and MappedLogId are not the equal");
+    assert!(log_id == mapped, "LogId and MappedLogId are not the equal");
+}
+
+#[test]
 fn logid_with_span() {
     tracing_subscriber::fmt::init();
     const SPAN_NAME: &str = "mySpan";
