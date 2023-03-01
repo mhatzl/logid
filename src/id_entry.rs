@@ -100,7 +100,7 @@ impl LogIdEntry {
 /// Diagnostic struct offering information about the original input
 /// that may be used to create detailed diagnostics (e.g. for language server diagnostics).
 #[cfg(feature = "diagnostics")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     /// Original input that caused this log-id entry
     ///
@@ -116,7 +116,7 @@ pub struct Diagnostic {
 
 /// Specifies a position inside a text-based 2D-structure.
 #[cfg(feature = "diagnostics")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Position {
     /// The line number of the position.
     pub line: usize,
@@ -126,7 +126,7 @@ pub struct Position {
 
 /// Specifies a range inside a text-based 2D-structure.
 #[cfg(feature = "diagnostics")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Range {
     /// The start position of the range.
     pub start: Position,
@@ -136,7 +136,7 @@ pub struct Range {
 
 /// Diagnostic tags inspired from the language server protocol.
 #[cfg(feature = "diagnostics")]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiagnosticTag {
     /// Tag to mark unused or unnecessary input
     Unnecessary = 1,
