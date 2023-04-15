@@ -5,13 +5,22 @@
 /// **Note:** Wrapper of `isize` for easier `id <=> enum` conversion.
 pub type LogId = isize;
 
+/// Macro to convert an enum to a [`LogId`].
+#[macro_export]
+macro_rules! logid {
+    ($id:ident) => {
+        ($id as $crate::log_id::LogId)
+    };
+}
+
 /// Represents an invalid log-id
 pub const INVALID_LOG_ID: LogId = 0;
 
 /// Event level a log-id may represent.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub enum EventLevel {
     /// Log-id debug kind
+    #[default]
     Debug = 0,
     /// Log-id info kind
     Info = 1,
@@ -19,12 +28,6 @@ pub enum EventLevel {
     Warn = 2,
     /// Log-id error kind
     Error = 3,
-}
-
-impl Default for EventLevel {
-    fn default() -> Self {
-        EventLevel::Debug
-    }
 }
 
 impl From<&tracing::Level> for EventLevel {

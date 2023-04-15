@@ -1,10 +1,12 @@
 //! Contains the [`LogIdEntry`] definition used to capture messages for a log-id.
 
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 #[cfg(feature = "diagnostics")]
 use std::path::PathBuf;
 
+use crate::capturing::MappedLogId;
 use crate::log_id::{EventLevel, LogId, LogIdParts};
 
 /// Structure representing the origin of a log-id.
@@ -47,21 +49,21 @@ pub struct LogIdEntry {
     /// **Note:** The hash is computed using the current ThreadId and time when the entry is created, and the origin of the entry.
     pub(crate) hash: u64,
     /// The log-id of this entry
-    pub id: LogId,
+    pub(crate) id: LogId,
     /// The level of the log-id of this entry
-    pub level: EventLevel,
+    pub(crate) level: EventLevel,
     /// The main message set when creating the log-id entry
-    pub msg: String,
+    pub(crate) msg: String,
     /// List of additional informations for this log-id entry
-    pub infos: Vec<String>,
+    pub(crate) infos: Vec<String>,
     /// List of additional debug informations for this log-id entry
-    pub debugs: Vec<String>,
+    pub(crate) debugs: Vec<String>,
     /// List of additional trace information for this log-id entry
-    pub traces: Vec<String>,
+    pub(crate) traces: Vec<String>,
     /// Code position where the log-id entry was created
-    pub origin: Origin,
+    pub(crate) origin: Origin,
     /// Name of the span that was current when the log-id event was set
-    pub span: &'static str,
+    pub(crate) span: &'static str,
 
     /// Flag to inform that an entry may be safely drained.
     /// This is the case, when no more information is added to the entry.
@@ -94,6 +96,75 @@ impl LogIdEntry {
             hash,
             ..Default::default()
         }
+    }
+    /// Get the log-id of this entry
+    pub fn get_id(&self) -> &LogId {
+        &self.id
+    }
+    /// Get the level of the log-id of this entry
+    pub fn get_level(&self) -> &EventLevel {
+        &self.level
+    }
+    /// Get the main message set when creating the log-id entry
+    pub fn get_msg(&self) -> &String {
+        &self.msg
+    }
+    /// Get the list of additional informations for this log-id entry
+    pub fn get_infos(&self) -> &Vec<String> {
+        &self.infos
+    }
+    /// Get the list of additional debug informations for this log-id entry
+    pub fn get_debugs(&self) -> &Vec<String> {
+        &self.debugs
+    }
+    /// Get the list of additional trace information for this log-id entry
+    pub fn get_traces(&self) -> &Vec<String> {
+        &self.traces
+    }
+    /// Get the code position where the log-id entry was created
+    pub fn get_origin(&self) -> &Origin {
+        &self.origin
+    }
+    /// Get the name of the span that was current when the log-id event was set
+    pub fn get_span(&self) -> &str {
+        self.span
+    }
+}
+
+/// Trait used to implement functions on the [`LogIdEntry`] HashSet.
+pub trait LogIdEntrySet {
+    /// Returns the [`LogId`] all entries in this [`LogIdEntrySet`] have, or `None` if the set is empty.
+    fn get_logid(&self) -> Option<LogId>;
+
+    /// Tries to get a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
+    ///
+    /// # Arguments
+    ///
+    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
+    fn get_entry(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry>;
+
+    /// Tries to retrieve a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
+    ///
+    /// # Arguments
+    ///
+    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
+    fn take_entry(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry>;
+}
+
+impl LogIdEntrySet for HashSet<LogIdEntry> {
+    fn get_logid(&self) -> Option<LogId> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self.iter().last()?.id)
+    }
+
+    fn get_entry(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry> {
+        self.get(&LogIdEntry::shallow_new(mapped_id.hash))
+    }
+
+    fn take_entry(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry> {
+        self.take(&LogIdEntry::shallow_new(mapped_id.hash))
     }
 }
 

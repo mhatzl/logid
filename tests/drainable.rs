@@ -2,8 +2,8 @@
 
 use logid::{
     capturing::LogIdTracing,
-    id_entry::LogIdEntry,
-    id_map::{LogIdEntrySet, LogIdMap},
+    id_entry::{LogIdEntry, LogIdEntrySet},
+    id_map::LogIdMap,
     log_id::{get_log_id, EventLevel},
 };
 use once_cell::sync::Lazy;
@@ -25,8 +25,12 @@ fn finalize_logid_manually() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
     assert!(entry.drainable(), "Entry not marked as drainable");
 }
 
@@ -52,7 +56,11 @@ fn finalize_logid_on_drop() {
 
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
     assert!(entry.drainable(), "Entry not marked as drainable");
 }
 
@@ -77,7 +85,11 @@ fn get_drainable_entries() {
 
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
     assert!(entry.drainable(), "Entry not marked as drainable");
 }
 
@@ -120,7 +132,11 @@ fn entries_not_drainable_not_removed() {
 
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
     assert!(entry.drainable(), "Entry not marked as drainable");
 }
 
@@ -145,7 +161,11 @@ fn entries_drainable_and_removed() {
 
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
     assert!(entry.drainable(), "Entry not marked as drainable");
 
     assert!(
@@ -193,7 +213,7 @@ fn entries_partially_drainable_in_map_same_id() {
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
     let entry = entries.last().unwrap();
     assert!(entry.drainable(), "Entry not marked as drainable");
-    assert_eq!(entry.msg, msg_1, "Wrong entry drained");
+    assert_eq!(*entry.get_msg(), msg_1, "Wrong entry drained");
 
     let remaining_entries = LOG_MAP.get_entries_unsafe(log_id).unwrap();
     let remaining_entries = remaining_entries.iter().collect::<Vec<&LogIdEntry>>();
@@ -204,5 +224,5 @@ fn entries_partially_drainable_in_map_same_id() {
     );
     let entry = remaining_entries.last().unwrap();
     assert!(!entry.drainable(), "Entry marked as drainable");
-    assert_eq!(entry.msg, msg_2, "Wrong entry drained");
+    assert_eq!(*entry.get_msg(), msg_2, "Wrong entry drained");
 }

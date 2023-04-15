@@ -8,9 +8,9 @@ use std::{
 use once_cell::sync::Lazy;
 
 use crate::{
-    capturing::MappedLogId,
     id_entry::LogIdEntry,
     log_id::{LogId, INVALID_LOG_ID},
+    setup_map,
 };
 
 /// Map to capture [`LogId`]s, and combine all informations set
@@ -27,6 +27,9 @@ pub struct LogIdMap {
 
 pub(crate) static LOG_ID_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
+// Creates the `set_event!()` macro for the base map
+setup_map!(&LOG_ID_MAP);
+
 impl Default for LogIdMap {
     fn default() -> Self {
         Self::new()
@@ -36,33 +39,6 @@ impl Default for LogIdMap {
 /// Drain global [`LogIdMap`].  Returning all `drainable` entries of all captured [`LogId`]s of the map so far.
 pub fn drain_map() -> Option<HashMap<LogId, HashSet<LogIdEntry>>> {
     LOG_ID_MAP.drain_map()
-}
-
-/// Trait used to implement functions on the [`LogIdEntry`] HashSet.
-pub trait LogIdEntrySet {
-    /// Tries to get a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
-    ///
-    /// # Arguments
-    ///
-    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
-    fn get_logid(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry>;
-
-    /// Tries to retrieve a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
-    ///
-    /// # Arguments
-    ///
-    /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
-    fn take_logid(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry>;
-}
-
-impl LogIdEntrySet for HashSet<LogIdEntry> {
-    fn get_logid(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry> {
-        self.get(&LogIdEntry::shallow_new(mapped_id.hash))
-    }
-
-    fn take_logid(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry> {
-        self.take(&LogIdEntry::shallow_new(mapped_id.hash))
-    }
 }
 
 impl LogIdMap {

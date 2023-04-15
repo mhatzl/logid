@@ -1,8 +1,8 @@
 //! Offers functionality to set an event on a [`LogId`] and capture its content in a [`LogIdMap`].
 
 use crate::{
-    id_entry::{LogIdEntry, Origin},
-    id_map::{LogIdEntrySet, LogIdMap, LOG_ID_MAP},
+    id_entry::{LogIdEntry, LogIdEntrySet, Origin},
+    id_map::{LogIdMap, LOG_ID_MAP},
     log_id::{EventLevel, LogId},
 };
 
@@ -46,6 +46,56 @@ pub trait LogIdTracing {
     fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId;
 }
 
+/// Macro to set a log event.
+///
+/// **Arguments:**
+///
+/// * `logid` ... must be a valid `LogId`
+/// * `map` ... must be a valid `LogIdMap`
+/// * `msg` ... `string` variable or literal of the main message set for the event
+#[macro_export]
+macro_rules! set_event_with {
+    ($logid:ident, $map:expr, $msg:ident) => {
+        $crate::capturing::LogIdTracing::set_event_with(
+            $crate::logid!($logid),
+            $map,
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+    ($logid:ident, $map:expr, $msg:literal) => {
+        $crate::capturing::LogIdTracing::set_event_with(
+            $crate::logid!($logid),
+            $map,
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+}
+
+/// Macro to create the `set_event!(logid, msg)` macro for a given `LogIdMap`.
+///
+#[macro_export]
+macro_rules! setup_map {
+    ($map:expr) => {
+        #[doc = "Macro to set a log event that is captured in the implicitly set `LogIdMap`"]
+        #[doc = "\n**Arguments:**\n"]
+        #[doc = "* `logid` ... must be a valid `LogId`"]
+        #[doc = "* `msg` ... `string` variable or literal of the main message set for the event"]
+        #[macro_export]
+        macro_rules! set_event {
+            ($logid:ident, $msg:ident) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
+            ($logid:ident, $msg:literal) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
+        }
+    };
+}
+
 /// Traces a [`LogIdEntry`] creation.
 fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> LogIdEntry {
     let id_entry = LogIdEntry::new(id, msg, filename, line_nr);
@@ -66,7 +116,7 @@ fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> L
 
 impl LogIdTracing for LogId {
     fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId {
-        self.set_event_with(&*LOG_ID_MAP, msg, filename, line_nr)
+        self.set_event_with(&LOG_ID_MAP, msg, filename, line_nr)
     }
 
     fn set_event_with(
@@ -125,6 +175,12 @@ pub struct MappedLogId {
     map: Option<&'static LogIdMap>,
 }
 
+impl From<MappedLogId> for LogId {
+    fn from(mapped_id: MappedLogId) -> Self {
+        mapped_id.finalize()
+    }
+}
+
 impl PartialEq<LogId> for MappedLogId {
     fn eq(&self, other: &LogId) -> bool {
         self.id == *other
@@ -169,7 +225,7 @@ impl MappedLogId {
             if let Ok(mut map) = update_map {
                 match map.get_mut(&self.id) {
                     Some(entries) => {
-                        if let Some(mut entry) = entries.take_logid(&self) {
+                        if let Some(mut entry) = entries.take_entry(&self) {
                             entry.add_cause(msg.to_string());
                             entries.insert(entry);
                         };
@@ -218,7 +274,7 @@ impl MappedLogId {
         if let Some(log_map) = self.map {
             if let Ok(mut map) = log_map.map.write() {
                 if let Some(entries) = map.get_mut(&self.id) {
-                    if let Some(mut entry) = entries.take_logid(self) {
+                    if let Some(mut entry) = entries.take_entry(self) {
                         entry.finalize();
                         entries.insert(entry);
                         finalized = true;
@@ -245,7 +301,7 @@ impl MappedLogId {
             if let Ok(mut map) = update_map {
                 match map.get_mut(&self.id) {
                     Some(entries) => {
-                        if let Some(mut entry) = entries.take_logid(&self) {
+                        if let Some(mut entry) = entries.take_entry(&self) {
                             entry.add_diagnostic(diagnostic);
                             entries.insert(entry);
                         };
@@ -271,7 +327,7 @@ fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) 
         if let Ok(mut map) = update_map {
             match map.get_mut(&mapped_id.id) {
                 Some(entries) => {
-                    if let Some(mut entry) = entries.take_logid(mapped_id) {
+                    if let Some(mut entry) = entries.take_entry(mapped_id) {
                         entry.add_addon(level, msg.to_string());
                         entries.insert(entry);
                     };

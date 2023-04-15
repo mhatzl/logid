@@ -2,8 +2,8 @@
 
 use logid::{
     capturing::LogIdTracing,
-    id_entry::Origin,
-    id_map::{drain_map, LogIdEntrySet, LogIdMap},
+    id_entry::{LogIdEntrySet, Origin},
+    id_map::{drain_map, LogIdMap},
     log_id::{get_log_id, EventLevel},
 };
 use once_cell::sync::Lazy;
@@ -31,16 +31,24 @@ fn capture_single_logid() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Error,
         "Set and stored event levels are not equal"
     );
-    assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
-        entry.origin,
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
+    );
+    assert_eq!(
+        *entry.get_origin(),
         Origin::new(file!(), 19),
         "Set and stored origins are not equal"
     );
@@ -71,16 +79,24 @@ fn capture_single_logid_with_cause() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Warn,
         "Set and stored event levels are not equal"
     );
-    assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
     assert_eq!(
-        entry.origin,
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
+    );
+    assert_eq!(
+        *entry.get_origin(),
         Origin::new(file!(), line),
         "Set and stored origins are not equal"
     );
@@ -113,16 +129,24 @@ fn capture_single_logid_with_info() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Info,
         "Set and stored event levels are not equal"
     );
 
-    assert_eq!(entry.infos.len(), 1, "More than one or no info was set");
-    let act_info = entry.infos.last().unwrap();
+    assert_eq!(
+        entry.get_infos().len(),
+        1,
+        "More than one or no info was set"
+    );
+    let act_info = entry.get_infos().last().unwrap();
     assert_eq!(act_info, info, "Set and stored messages are not equal");
 }
 
@@ -149,20 +173,24 @@ fn capture_single_logid_with_debug() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Debug,
         "Set and stored event levels are not equal"
     );
 
     assert_eq!(
-        entry.debugs.len(),
+        entry.get_debugs().len(),
         1,
         "More than one or no debug info was set"
     );
-    let act_debug = entry.debugs.last().unwrap();
+    let act_debug = entry.get_debugs().last().unwrap();
     assert_eq!(act_debug, debug, "Set and stored messages are not equal");
 }
 
@@ -189,16 +217,24 @@ fn capture_single_logid_with_trace() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Debug,
         "Set and stored event levels are not equal"
     );
 
-    assert_eq!(entry.traces.len(), 1, "More than one or no trace was set");
-    let act_trace = entry.traces.last().unwrap();
+    assert_eq!(
+        entry.get_traces().len(),
+        1,
+        "More than one or no trace was set"
+    );
+    let act_trace = entry.get_traces().last().unwrap();
     assert_eq!(act_trace, trace, "Set and stored messages are not equal");
 }
 
@@ -222,14 +258,22 @@ fn capture_single_logid_with_custom_map() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry = entries.get_logid(&mapped).unwrap();
-    assert_eq!(entry.id, log_id, "Set and stored log-ids are not equal");
+    let entry = entries.get_entry(&mapped).unwrap();
     assert_eq!(
-        entry.level,
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
         EventLevel::Error,
         "Set and stored event levels are not equal"
     );
-    assert_eq!(entry.msg, msg, "Set and stored messages are not equal");
+    assert_eq!(
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
+    );
 }
 
 #[test]
@@ -261,8 +305,12 @@ fn capture_two_logids_with_custom_map() {
         1,
         "More than one or no entry for the same log-id"
     );
-    let entry_1 = entries_1.get_logid(&mapped_1).unwrap();
-    assert_eq!(entry_1.id, log_id_1, "Set and stored log-ids are not equal");
+    let entry_1 = entries_1.get_entry(&mapped_1).unwrap();
+    assert_eq!(
+        *entry_1.get_id(),
+        log_id_1,
+        "Set and stored log-ids are not equal"
+    );
 
     let entries_2 = map.get(&log_id_2).unwrap();
     assert_eq!(
@@ -270,8 +318,12 @@ fn capture_two_logids_with_custom_map() {
         1,
         "More than one or no entry for the same log-id"
     );
-    let entry_2 = entries_2.get_logid(&mapped_2).unwrap();
-    assert_eq!(entry_2.id, log_id_2, "Set and stored log-ids are not equal");
+    let entry_2 = entries_2.get_entry(&mapped_2).unwrap();
+    assert_eq!(
+        *entry_2.get_id(),
+        log_id_2,
+        "Set and stored log-ids are not equal"
+    );
 }
 
 #[test]
@@ -315,9 +367,9 @@ fn logid_with_span() {
     let map = LOG_MAP.drain_map().unwrap();
 
     let entries = map.get(&log_id).unwrap();
-    let entry = entries.get_logid(&mapped).unwrap();
+    let entry = entries.get_entry(&mapped).unwrap();
 
-    assert_eq!(entry.span, SPAN_NAME, "Span names are not equal");
+    assert_eq!(entry.get_span(), SPAN_NAME, "Span names are not equal");
 }
 
 #[test]
@@ -344,17 +396,27 @@ fn capture_same_logid_twice_with_different_origin() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry_1 = entries.get_logid(&mapped_1).unwrap();
-    assert_eq!(entry_1.id, log_id, "Set and stored log-ids are not equal");
+    let entry_1 = entries.get_entry(&mapped_1).unwrap();
     assert_eq!(
-        entry_1.origin.line_nr, line_1,
+        *entry_1.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_1.get_origin().line_nr,
+        line_1,
         "Set and stored line numbers are not equal"
     );
 
-    let entry_2 = entries.get_logid(&mapped_2).unwrap();
-    assert_eq!(entry_2.id, log_id, "Set and stored log-ids are not equal");
+    let entry_2 = entries.get_entry(&mapped_2).unwrap();
     assert_eq!(
-        entry_2.origin.line_nr, line_2,
+        *entry_2.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_2.get_origin().line_nr,
+        line_2,
         "Set and stored line numbers are not equal"
     );
 }
@@ -383,17 +445,27 @@ fn capture_same_logid_twice_with_same_origin() {
         "More than one or no entry for the same log-id"
     );
 
-    let entry_1 = entries.get_logid(&mapped_1).unwrap();
-    assert_eq!(entry_1.id, log_id, "Set and stored log-ids are not equal");
+    let entry_1 = entries.get_entry(&mapped_1).unwrap();
     assert_eq!(
-        entry_1.origin.line_nr, line,
+        *entry_1.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_1.get_origin().line_nr,
+        line,
         "Set and stored line numbers are not equal"
     );
 
-    let entry_2 = entries.get_logid(&mapped_2).unwrap();
-    assert_eq!(entry_2.id, log_id, "Set and stored log-ids are not equal");
+    let entry_2 = entries.get_entry(&mapped_2).unwrap();
     assert_eq!(
-        entry_2.origin.line_nr, line,
+        *entry_2.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_2.get_origin().line_nr,
+        line,
         "Set and stored line numbers are not equal"
     );
 }
