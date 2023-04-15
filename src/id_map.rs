@@ -10,7 +10,7 @@ use once_cell::sync::Lazy;
 use crate::{
     id_entry::LogIdEntry,
     log_id::{LogId, INVALID_LOG_ID},
-    setup_map,
+    setup_logid_map,
 };
 
 /// Map to capture [`LogId`]s, and combine all informations set
@@ -27,8 +27,87 @@ pub struct LogIdMap {
 
 pub(crate) static LOG_ID_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
+/// Macro to setup the macros `set_event!()` and `logid_map_functions!()`.
+/// The `logid_map_functions!()` macro creates public functions to allow users of a crate restricted access to a internal `LogIdMap`.
+///
+/// **Arguments:**
+///
+/// * `map` ... must be a reference to a global `LogIdMap`.
+#[macro_export]
+macro_rules! setup_logid_map {
+    ($map:expr) => {
+        /// Macro to set a log event that is captured in the implicitly set `LogIdMap`
+        ///
+        /// **Arguments:**
+        ///
+        /// * `logid` ... must be a valid `LogId`
+        /// * `msg` ... `string` variable or literal of the main message set for the event
+        #[macro_export]
+        macro_rules! set_event {
+            ($logid:ident, $msg:ident) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
+            ($logid:ident, $msg:literal) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
+        }
+
+        /// Macro to setup public functions for useful `logid` functionalities for the implicitly set `LogIdMap`.
+        ///
+        /// **Creates:**
+        ///
+        /// * `pub fn logid_map_get_last_finalized_id() -> LogId`
+        /// * `pub fn logid_map_drain_map() -> Option<HashMap<LogId, HashSet<LogIdEntry>>>`
+        /// * `pub fn logid_map_get_entries(id: LogId) -> Option<HashSet<LogIdEntry>>`
+        /// * `pub fn logid_map_drain_entries(id: LogId) -> Option<HashSet<LogIdEntry>>`
+        #[macro_export]
+        macro_rules! logid_map_functions {
+            () => {
+                /// Returns the last `LogId` that was
+                /// entered in the `LogIdMap`, and got marked as `drainable`.
+                pub fn logid_map_get_last_finalized_id() -> $crate::log_id::LogId {
+                    $crate::id_map::LogIdMap::get_last_finalized_id($map)
+                }
+
+                /// Drain the `LogIdMap`. Returning all `drainable` entries of all captured `LogId`s of the map so far.
+                pub fn logid_map_drain_map() -> Option<
+                    std::collections::HashMap<
+                        $crate::log_id::LogId,
+                        std::collections::HashSet<$crate::id_entry::LogIdEntry>,
+                    >,
+                > {
+                    $crate::id_map::LogIdMap::drain_map($map)
+                }
+
+                /// Returns all captured entries marked as `drainable` for the given `LogId`.
+                ///
+                /// # Arguments
+                ///
+                /// * `id` - the `LogId` used to search for map entries
+                pub fn logid_map_get_entries(
+                    id: $crate::log_id::LogId,
+                ) -> Option<std::collections::HashSet<$crate::id_entry::LogIdEntry>> {
+                    $crate::id_map::LogIdMap::get_entries($map, id)
+                }
+
+                /// Drains all captured entries marked as `drainable` for the given `LogId`.
+                /// Non-drainable entries remain in the map.
+                ///
+                /// # Arguments
+                ///
+                /// * `id` - the `LogId` used to search for map entries
+                pub fn logid_map_drain_entries(
+                    id: $crate::log_id::LogId,
+                ) -> Option<std::collections::HashSet<$crate::id_entry::LogIdEntry>> {
+                    $crate::id_map::LogIdMap::drain_entries($map, id)
+                }
+            };
+        }
+    };
+}
+
 // Creates the `set_event!()` macro for the base map
-setup_map!(&LOG_ID_MAP);
+setup_logid_map!(&LOG_ID_MAP);
 
 impl Default for LogIdMap {
     fn default() -> Self {

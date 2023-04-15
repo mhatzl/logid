@@ -75,27 +75,6 @@ macro_rules! set_event_with {
     };
 }
 
-/// Macro to create the `set_event!(logid, msg)` macro for a given `LogIdMap`.
-///
-#[macro_export]
-macro_rules! setup_map {
-    ($map:expr) => {
-        #[doc = "Macro to set a log event that is captured in the implicitly set `LogIdMap`"]
-        #[doc = "\n**Arguments:**\n"]
-        #[doc = "* `logid` ... must be a valid `LogId`"]
-        #[doc = "* `msg` ... `string` variable or literal of the main message set for the event"]
-        #[macro_export]
-        macro_rules! set_event {
-            ($logid:ident, $msg:ident) => {
-                $crate::set_event_with!($logid, $map, $msg)
-            };
-            ($logid:ident, $msg:literal) => {
-                $crate::set_event_with!($logid, $map, $msg)
-            };
-        }
-    };
-}
-
 /// Traces a [`LogIdEntry`] creation.
 fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> LogIdEntry {
     let id_entry = LogIdEntry::new(id, msg, filename, line_nr);

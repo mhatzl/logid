@@ -9,7 +9,7 @@
 //! const SOME_ERROR: LogId = get_log_id(0, 0, EventLevel::Error, 0);
 //!
 //! static GLOBAL_LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-//! logid::setup_map!(&GLOBAL_LOG_MAP);
+//! logid::setup_logid_map!(&GLOBAL_LOG_MAP);
 //!
 //! fn my_func() -> Result<usize, LogId> {
 //!   // some code ...

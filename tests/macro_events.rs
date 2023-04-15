@@ -71,7 +71,7 @@ fn set_event_with_literal_msg() {
 
 // Setup macro with custom global map
 static GLOBAL_LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-logid::setup_map!(&GLOBAL_LOG_MAP);
+logid::setup_logid_map!(&GLOBAL_LOG_MAP);
 
 #[test]
 fn set_event_macro() {
@@ -89,5 +89,32 @@ fn set_event_macro() {
             line_nr: 80
         },
         "Origin of log_id not set correctly"
+    );
+}
+
+logid_map_functions!();
+
+#[test]
+fn global_entries_accessed() {
+    // clear possible previous state
+    GLOBAL_LOG_MAP.drain_map();
+
+    let log_id = get_log_id(0, 0, EventLevel::Warn, 2);
+    let msg = "Set first log message";
+
+    let log_id = set_event!(log_id, msg).finalize();
+
+    let map = logid_map_drain_map().unwrap();
+    let entries = map.get(&log_id).unwrap();
+    let entry = entries.iter().last().unwrap();
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
+        EventLevel::Warn,
+        "Set and stored event levels are not equal"
     );
 }
