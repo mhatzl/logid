@@ -28,7 +28,7 @@ pub struct LogIdMap {
 pub(crate) static LOG_ID_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
 /// Macro to setup the macros `set_event!()` and `logid_map_functions!()`.
-/// The `logid_map_functions!()` macro creates public functions to allow users of a crate restricted access to a internal `LogIdMap`.
+/// The `logid_map_functions!()` macro creates public functions to allow users of a crate restricted access to an internal `LogIdMap`.
 ///
 /// **Arguments:**
 ///
@@ -48,6 +48,9 @@ macro_rules! setup_logid_map {
                 $crate::set_event_with!($logid, $map, $msg)
             };
             ($logid:ident, $msg:literal) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
+            ($logid:ident, $msg:expr) => {
                 $crate::set_event_with!($logid, $map, $msg)
             };
         }

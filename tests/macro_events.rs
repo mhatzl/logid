@@ -92,6 +92,19 @@ fn set_event_macro() {
     );
 }
 
+#[test]
+fn set_event_macro_using_expression() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+
+    let log_id =
+        set_event!(log_id, &format!("Set first log message with id={}", log_id)).finalize();
+
+    let map = GLOBAL_LOG_MAP.drain_map().unwrap();
+    let entries = map.get(&log_id).unwrap();
+    let entry = entries.iter().last().unwrap();
+    assert_eq!(*entry.get_id(), log_id, "ID of log_id not set correctly");
+}
+
 logid_map_functions!();
 
 #[test]
