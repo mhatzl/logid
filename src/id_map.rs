@@ -53,6 +53,9 @@ macro_rules! setup_logid_map {
             ($logid:ident, $msg:expr) => {
                 $crate::set_event_with!($logid, $map, $msg)
             };
+            ($logid:expr, $msg:expr) => {
+                $crate::set_event_with!($logid, $map, $msg)
+            };
         }
 
         /// Macro to setup public functions for useful `logid` functionalities for the implicitly set `LogIdMap`.

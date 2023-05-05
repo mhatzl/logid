@@ -131,3 +131,41 @@ fn global_entries_accessed() {
         "Set and stored event levels are not equal"
     );
 }
+
+enum TestLogId {
+    Id = get_log_id(0, 0, EventLevel::Error, 2),
+}
+
+#[test]
+fn set_event_with_enum() {
+    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
+    let msg = "Set first log message";
+
+    let log_id = set_event_with!(TestLogId::Id, &LOG_MAP, msg).finalize();
+
+    let map = LOG_MAP.drain_map().unwrap();
+
+    assert_eq!(map.len(), 1, "More than one or no event captured!");
+    assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+
+    let entries = map.get(&log_id).unwrap();
+    assert_eq!(
+        entries.len(),
+        1,
+        "More than one or no entry for the same log-id"
+    );
+
+    let entry = entries.iter().last().unwrap();
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
+        EventLevel::Error,
+        "Set and stored event levels are not equal"
+    );
+
+    assert_eq!(entry.get_infos().len(), 0, "Info was set");
+}

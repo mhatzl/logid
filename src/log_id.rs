@@ -11,6 +11,9 @@ macro_rules! logid {
     ($id:ident) => {
         ($id as $crate::log_id::LogId)
     };
+    ($id:expr) => {
+        ($id as $crate::log_id::LogId)
+    };
 }
 
 /// Represents an invalid log-id

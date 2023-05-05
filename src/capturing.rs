@@ -82,6 +82,15 @@ macro_rules! set_event_with {
             line!(),
         )
     };
+    ($logid:expr, $map:expr, $msg:expr) => {
+        $crate::capturing::LogIdTracing::set_event_with(
+            $crate::logid!($logid),
+            $map,
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
 }
 
 /// Traces a [`LogIdEntry`] creation.
