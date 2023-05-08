@@ -2,17 +2,17 @@
 
 #[cfg(feature = "diagnostics")]
 use logid::{
-    capturing::LogIdTracing,
+    drain_map,
     id_entry::{Diagnostic, DiagnosticTag, LogIdEntry, Position, Range},
-    id_map::LogIdMap,
     log_id::{get_log_id, EventLevel},
+    set_event,
 };
-#[cfg(feature = "diagnostics")]
-use once_cell::sync::Lazy;
 
 #[cfg(feature = "diagnostics")]
 #[test]
 fn capture_single_logid_with_diagnostics() {
+    drain_map!();
+
     let log_id = get_log_id(1, 1, EventLevel::Debug, 0);
     let msg = "Set first log message";
 
@@ -29,13 +29,10 @@ fn capture_single_logid_with_diagnostics() {
         tags: [DiagnosticTag::Deprecated].into(),
     };
 
-    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
-    let mapped = log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .add_diagnostic(diagnostics.clone());
-    mapped.finalize();
+    let event = set_event!(log_id, msg).add_diagnostic(diagnostics.clone());
+    event.finalize();
 
-    let map = LOG_MAP.drain_map().unwrap();
+    let map = drain_map!().unwrap();
 
     let entries = map.get(&log_id).unwrap();
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();

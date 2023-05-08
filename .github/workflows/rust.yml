@@ -26,7 +26,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run tests
-      run: cargo test --verbose --all-features
+      # Sequential testing required since all log entries are stored in one central hashmap
+      run: cargo test --verbose --all-features -- --test-threads 1
       
   lint:
     name: Run Linter (clippy)

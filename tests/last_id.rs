@@ -1,127 +1,120 @@
 //! Tests that `last_finalized_id` is set correctly
 
 use logid::{
-    capturing::LogIdTracing,
-    id_map::LogIdMap,
-    log_id::{get_log_id, EventLevel, INVALID_LOG_ID},
+    drain_entries, drain_map, get_last_finalized_id,
+    log_id::{get_log_id, EventLevel},
+    set_event,
 };
-use once_cell::sync::Lazy;
 
 #[test]
 fn last_id_updated_to_finalized_logid() {
+    drain_map!();
+
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Initialized last id was wrong"
     );
 
-    log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    set_event!(log_id, msg).finalize();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        log_id,
+        get_last_finalized_id!(),
+        Some(log_id),
         "Last finalized id not updated"
     );
 }
 
 #[test]
 fn last_id_updated_after_last_got_drained() {
+    drain_map!();
+
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Initialized last id was wrong"
     );
 
-    log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    set_event!(log_id, msg).finalize();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        log_id,
+        get_last_finalized_id!(),
+        Some(log_id),
         "Last finalized id not updated"
     );
 
-    let _ = LOG_MAP.drain_entries(log_id);
+    let _ = drain_entries!(log_id);
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Last finalized id was not reset"
     );
 }
 
 #[test]
 fn last_id_updated_after_map_got_drained() {
+    drain_map!();
+
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Initialized last id was wrong"
     );
 
-    log_id
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    set_event!(log_id, msg).finalize();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        log_id,
+        get_last_finalized_id!(),
+        Some(log_id),
         "Last finalized id not updated"
     );
 
-    let _ = LOG_MAP.drain_map();
+    let _ = drain_map!();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Last finalized id was not reset"
     );
 }
 
 #[test]
 fn last_id_updated_to_latest_finalized_id() {
+    drain_map!();
+
     let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
-    static LOG_MAP: Lazy<LogIdMap> = Lazy::new(LogIdMap::new);
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        INVALID_LOG_ID,
+        get_last_finalized_id!(),
+        None,
         "Initialized last id was wrong"
     );
 
-    log_id_1
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    set_event!(log_id_1, msg).finalize();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        log_id_1,
+        get_last_finalized_id!(),
+        Some(log_id_1),
         "Last finalized id not updated"
     );
 
     let log_id_2 = get_log_id(1, 0, EventLevel::Error, 2);
-    log_id_2
-        .set_event_with(&LOG_MAP, msg, file!(), line!())
-        .finalize();
+    set_event!(log_id_2, msg).finalize();
 
     assert_eq!(
-        LOG_MAP.get_last_finalized_id(),
-        log_id_2,
+        get_last_finalized_id!(),
+        Some(log_id_2),
         "Last finalized id not updated"
     );
 }

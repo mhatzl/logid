@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 #[cfg(feature = "diagnostics")]
 use std::path::PathBuf;
 
-use crate::capturing::MappedLogId;
+use crate::capturing::LogIdEvent;
 use crate::log_id::{EventLevel, LogId, LogIdParts};
 
 /// Structure representing the origin of a log-id.
@@ -65,10 +65,6 @@ pub struct LogIdEntry {
     /// Name of the span that was current when the log-id event was set
     pub(crate) span: &'static str,
 
-    /// Flag to inform that an entry may be safely drained.
-    /// This is the case, when no more information is added to the entry.
-    drainable: bool,
-
     /// List of causes for this log-id entry
     #[cfg(feature = "causes")]
     pub causes: Vec<String>,
@@ -76,6 +72,17 @@ pub struct LogIdEntry {
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
     pub diagnostics: Vec<Diagnostic>,
+}
+
+/// [`EntryKind`] defines the message kind to be added to a [`LogIdEntry`].
+pub(crate) enum EntryKind {
+    Info(String),
+    Debug(String),
+    Trace(String),
+    #[cfg(feature = "causes")]
+    Cause(String),
+    #[cfg(feature = "diagnostics")]
+    Diagnostic(Diagnostic),
 }
 
 impl PartialEq for LogIdEntry {
@@ -141,14 +148,14 @@ pub trait LogIdEntrySet {
     /// # Arguments
     ///
     /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
-    fn get_entry(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry>;
+    fn get_entry(&self, mapped_id: &LogIdEvent) -> Option<&LogIdEntry>;
 
     /// Tries to retrieve a [`LogIdEntry`] that is identified by the given [`MappedLogId`].
     ///
     /// # Arguments
     ///
     /// - `mapped_id` - [`MappedLogId`] used to identify the [`LogIdEntry`]
-    fn take_entry(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry>;
+    fn take_entry(&mut self, mapped_id: &LogIdEvent) -> Option<LogIdEntry>;
 }
 
 impl LogIdEntrySet for HashSet<LogIdEntry> {
@@ -159,12 +166,12 @@ impl LogIdEntrySet for HashSet<LogIdEntry> {
         Some(self.iter().last()?.id)
     }
 
-    fn get_entry(&self, mapped_id: &MappedLogId) -> Option<&LogIdEntry> {
-        self.get(&LogIdEntry::shallow_new(mapped_id.hash))
+    fn get_entry(&self, mapped_id: &LogIdEvent) -> Option<&LogIdEntry> {
+        self.get(&LogIdEntry::shallow_new(mapped_id.entry.hash))
     }
 
-    fn take_entry(&mut self, mapped_id: &MappedLogId) -> Option<LogIdEntry> {
-        self.take(&LogIdEntry::shallow_new(mapped_id.hash))
+    fn take_entry(&mut self, mapped_id: &LogIdEvent) -> Option<LogIdEntry> {
+        self.take(&LogIdEntry::shallow_new(mapped_id.entry.hash))
     }
 }
 
@@ -253,7 +260,6 @@ impl LogIdEntry {
             infos: Vec::default(),
             debugs: Vec::default(),
             traces: Vec::default(),
-            drainable: false,
 
             #[cfg(feature = "causes")]
             causes: Vec::default(),
@@ -261,49 +267,5 @@ impl LogIdEntry {
             #[cfg(feature = "diagnostics")]
             diagnostics: Vec::default(),
         }
-    }
-
-    /// Add cause to given [`LogIdEntry`].
-    #[cfg(feature = "causes")]
-    pub(crate) fn add_cause(&mut self, cause: String) {
-        self.causes.push(cause);
-    }
-
-    /// Add additional information to given [`LogIdEntry`].
-    /// The destination depends on the given [`tracing::Level`].
-    ///
-    /// # Arguments
-    ///
-    /// * `level` - [tracing::Level`] defining the destination of the addon
-    /// * `addon` - the additional information that is added to the [`LogIdEntry`]
-    pub(crate) fn add_addon(&mut self, level: &tracing::Level, addon: String) {
-        let addons = match *level {
-            tracing::Level::INFO => &mut self.infos,
-            tracing::Level::DEBUG => &mut self.debugs,
-            tracing::Level::TRACE => &mut self.traces,
-            _ => {
-                return;
-            }
-        };
-
-        addons.push(addon);
-    }
-
-    /// Finalizing an entry sets the `drainable` flag,
-    /// and marks that no more information will be added to this entry.
-    pub(crate) fn finalize(&mut self) {
-        self.drainable = true;
-    }
-
-    /// Returns `true` if the entry is safe to drain.
-    /// Meaning that no more additional information is added to this entry.
-    pub fn drainable(&self) -> bool {
-        self.drainable
-    }
-
-    /// Add diagnostic to given [`LogIdEntry`].
-    #[cfg(feature = "diagnostics")]
-    pub(crate) fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
     }
 }

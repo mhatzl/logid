@@ -1,8 +1,11 @@
 //! Offers functionality to set an event on a [`LogId`] and capture its content in a [`LogIdMap`].
 
+use std::{collections::HashSet, sync::atomic::Ordering};
+
 use crate::{
-    id_entry::{LogIdEntry, LogIdEntrySet, Origin},
-    id_map::{LogIdMap, LOG_ID_MAP},
+    crate_map::CRATES_MAP,
+    id_entry::{EntryKind, LogIdEntry},
+    id_map::LogIdMap,
     log_id::{EventLevel, LogId},
 };
 
@@ -11,81 +14,113 @@ use crate::id_entry::Diagnostic;
 
 /// Trait to use [`LogId`] for tracing.
 pub trait LogIdTracing {
-    /// Set an event for a [`LogId`] using the global [`LogIdMap`] reference [`LOG_ID_MAP`].
+    /// Set an event for a [`LogId`], and storing it inside the [`LogIdMap`] of the given crate name.
     ///
     /// # Arguments
     ///
-    /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
-    /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
-    /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId;
-
-    /// Set an event for a [`LogId`] using a given [`LogIdMap`].
-    ///
-    /// # Arguments
-    ///
-    /// * `log_map` - the map the log-id and all its addons are captured in
-    /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
-    /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
-    /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_event_with(
+    /// * `crate_name` ... Name of the crate to identify the [`LogIdMap`]
+    /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
+    /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
+    /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
+    fn set_event(
         self,
-        log_map: &'static LogIdMap,
+        crate_name: &'static str,
         msg: &str,
         filename: &str,
         line_nr: u32,
-    ) -> MappedLogId;
+    ) -> LogIdEvent;
 
     /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
     ///
     /// # Arguments
     ///
-    /// * `msg` - main message that is set for this log-id (should be a user-centered event description)
-    /// * `filename` - name of the source file where the event is set (Note: use `file!()`)
-    /// * `line_nr` - line number where the event is set (Note: use `line!()`)
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId;
+    /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
+    /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
+    /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> LogIdEvent;
 }
 
-/// Macro to set a log event.
+/// Macro to set a log event using the caller crate to identify the [`LogIdMap`].
 ///
 /// **Arguments:**
 ///
-/// * `logid` ... must be a valid `LogId`
-/// * `map` ... must be a valid `LogIdMap`
-/// * `msg` ... `string` variable or literal of the main message set for the event
+/// * `logid` ... Must be a valid `LogId`
+/// * `msg` ... `String` variable or literal of the main message set for the event
 #[macro_export]
-macro_rules! set_event_with {
-    ($logid:ident, $map:expr, $msg:ident) => {
-        $crate::capturing::LogIdTracing::set_event_with(
+macro_rules! set_event {
+    ($logid:ident, $msg:ident) => {
+        $crate::capturing::LogIdTracing::set_event(
             $crate::logid!($logid),
-            $map,
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
         )
     };
-    ($logid:ident, $map:expr, $msg:literal) => {
-        $crate::capturing::LogIdTracing::set_event_with(
+    ($logid:ident, $msg:literal) => {
+        $crate::capturing::LogIdTracing::set_event(
             $crate::logid!($logid),
-            $map,
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
         )
     };
-    ($logid:ident, $map:expr, $msg:expr) => {
-        $crate::capturing::LogIdTracing::set_event_with(
+    ($logid:ident, $msg:expr) => {
+        $crate::capturing::LogIdTracing::set_event(
             $crate::logid!($logid),
-            $map,
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
         )
     };
-    ($logid:expr, $map:expr, $msg:expr) => {
-        $crate::capturing::LogIdTracing::set_event_with(
+    ($logid:expr, $msg:expr) => {
+        $crate::capturing::LogIdTracing::set_event(
             $crate::logid!($logid),
-            $map,
+            env!("CARGO_PKG_NAME"),
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+}
+
+/// Macro to set a silent log event.
+///
+/// **Arguments:**
+///
+/// * `logid` ... Must be a valid `LogId`
+/// * `msg` ... `String` variable or literal of the main message set for the event
+#[macro_export]
+macro_rules! set_silent_event {
+    ($logid:ident, $msg:ident) => {
+        $crate::capturing::LogIdTracing::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+    ($logid:ident, $msg:literal) => {
+        $crate::capturing::LogIdTracing::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+    ($logid:ident, $msg:expr) => {
+        $crate::capturing::LogIdTracing::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+        )
+    };
+    ($logid:expr, $msg:expr) => {
+        $crate::capturing::LogIdTracing::set_silent_event(
+            $crate::logid!($logid),
             $msg,
             file!(),
             line!(),
@@ -112,231 +147,166 @@ fn trace_entry_creation(id: LogId, msg: &str, filename: &str, line_nr: u32) -> L
 }
 
 impl LogIdTracing for LogId {
-    fn set_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId {
-        self.set_event_with(&LOG_ID_MAP, msg, filename, line_nr)
-    }
-
-    fn set_event_with(
+    fn set_event(
         self,
-        log_map: &'static LogIdMap,
+        crate_name: &'static str,
         msg: &str,
         filename: &str,
         line_nr: u32,
-    ) -> MappedLogId {
+    ) -> LogIdEvent {
         let entry = trace_entry_creation(self, msg, filename, line_nr);
-        let hash = entry.hash;
-        let origin = entry.origin.clone();
 
-        let update_map = log_map.map.write();
-        if let Ok(mut map) = update_map {
-            match map.get_mut(&self) {
-                Some(entries) => {
-                    entries.insert(entry);
-                }
-                None => {
-                    map.insert(self, [entry].into());
-                }
-            };
-        }
-
-        MappedLogId {
-            hash,
-            id: self,
-            origin,
-            map: Some(log_map),
+        LogIdEvent {
+            entry,
+            crate_name: Some(crate_name),
         }
     }
 
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> MappedLogId {
-        let id_entry = trace_entry_creation(self, msg, filename, line_nr);
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> LogIdEvent {
+        let entry = trace_entry_creation(self, msg, filename, line_nr);
 
-        MappedLogId {
-            hash: id_entry.hash,
-            id: id_entry.id,
-            origin: id_entry.origin,
-            map: None,
+        LogIdEvent {
+            entry,
+            crate_name: None,
         }
     }
 }
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Clone)]
-pub struct MappedLogId {
-    /// Hash to identify the exact [`LogIdEntry`] this [`MappedLogId`] is mapped to in the linked [`LogIdMap`]
-    pub(crate) hash: u64,
-    /// [`LogId`] of this [`MappedLogId`]
-    id: LogId,
-    /// [`Origin`] of this [`MappedLogId`]
-    origin: Origin,
-    /// [`LogIdMap`] this [`MappedLogId`] is mapped to, or none for silent events
-    map: Option<&'static LogIdMap>,
+pub struct LogIdEvent {
+    /// Crate name identifying the [`LogIdMap`] the [`LogIdEvent`] is associated with, or none for silent events.
+    crate_name: Option<&'static str>,
+    /// [`LogIdEntry`] for the [`LogIdEvent`] storing all event information.
+    pub(crate) entry: LogIdEntry,
 }
 
-impl From<MappedLogId> for LogId {
-    fn from(mapped_id: MappedLogId) -> Self {
+impl From<LogIdEvent> for LogId {
+    fn from(mapped_id: LogIdEvent) -> Self {
         mapped_id.finalize()
     }
 }
 
-impl PartialEq<LogId> for MappedLogId {
+impl PartialEq<LogId> for LogIdEvent {
     fn eq(&self, other: &LogId) -> bool {
-        self.id == *other
+        self.entry.id == *other
     }
 }
 
-impl PartialEq<MappedLogId> for LogId {
-    fn eq(&self, other: &MappedLogId) -> bool {
-        *self == other.id
+impl PartialEq<LogIdEvent> for LogId {
+    fn eq(&self, other: &LogIdEvent) -> bool {
+        *self == other.entry.id
     }
 }
 
-impl Drop for MappedLogId {
-    /// [`MappedLogId`] is finalized on drop.
+impl Drop for LogIdEvent {
+    /// [`LogIdEvent`] is finalized on drop.
     fn drop(&mut self) {
         self.finalize();
     }
 }
 
-impl std::fmt::Debug for MappedLogId {
+impl std::fmt::Debug for LogIdEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MappedLogId")
-            .field("id", &self.id)
-            .field("origin", &self.origin)
+        f.debug_struct("LogIdEvent")
+            .field("id", &self.entry.id)
+            .field("origin", &self.entry.origin)
             .finish()
     }
 }
 
-impl MappedLogId {
+impl LogIdEvent {
     /// Returns the [`LogId`] of the [`MappedLogId`].
     pub fn id(&self) -> LogId {
-        self.id
-    }
-
-    /// Add a message describing the cause for this log-id
-    #[cfg(feature = "causes")]
-    pub fn add_cause(self, msg: &str) -> Self {
-        tracing::info!("{}(cause): {}", self.id, msg);
-
-        if let Some(log_map) = self.map {
-            let update_map = log_map.map.write();
-            if let Ok(mut map) = update_map {
-                match map.get_mut(&self.id) {
-                    Some(entries) => {
-                        if let Some(mut entry) = entries.take_entry(&self) {
-                            entry.add_cause(msg.to_string());
-                            entries.insert(entry);
-                        };
-                    }
-                    None => {
-                        tracing::warn!(
-                            "Got cause=\"{}\" for log-id={}, but no base for log-id was set!",
-                            msg,
-                            self.id
-                        )
-                    }
-                };
-            }
-        }
-
-        self
+        self.entry.id
     }
 
     /// Add an info message for this log-id
-    pub fn add_info(self, msg: &str) -> Self {
-        tracing::info!("{}(addon): {}", self.id, msg);
-        add_addon_to_map(&self, msg, &tracing::Level::INFO);
+    pub fn add_info(mut self, msg: &str) -> Self {
+        tracing::info!("{}(addon): {}", self.entry.id, msg);
+        add_addon_to_entry(&mut self, EntryKind::Info(msg.to_owned()));
         self
     }
 
     /// Add a debug message for this log-id
-    pub fn add_debug(self, msg: &str) -> Self {
-        tracing::debug!("{}(addon): {}", self.id, msg);
-        add_addon_to_map(&self, msg, &tracing::Level::DEBUG);
+    pub fn add_debug(mut self, msg: &str) -> Self {
+        tracing::debug!("{}(addon): {}", self.entry.id, msg);
+        add_addon_to_entry(&mut self, EntryKind::Debug(msg.to_owned()));
         self
     }
 
     /// Add a trace message for this log-id
-    pub fn add_trace(self, msg: &str) -> Self {
-        tracing::trace!("{}(addon): {}", self.id, msg);
-        add_addon_to_map(&self, msg, &tracing::Level::TRACE);
+    pub fn add_trace(mut self, msg: &str) -> Self {
+        tracing::trace!("{}(addon): {}", self.entry.id, msg);
+        add_addon_to_entry(&mut self, EntryKind::Trace(msg.to_owned()));
         self
     }
 
-    /// Finalizing a [`MappedLogId`] marks the map entry that
-    /// no more information will be added to it.
-    ///
-    /// Besides the [`LogId`], also the [`Origin`] of the [`LogIdEntry`] is compared for identification.
-    pub fn finalize(&self) -> LogId {
-        let mut finalized = false;
-        if let Some(log_map) = self.map {
-            if let Ok(mut map) = log_map.map.write() {
-                if let Some(entries) = map.get_mut(&self.id) {
-                    if let Some(mut entry) = entries.take_entry(self) {
-                        entry.finalize();
-                        entries.insert(entry);
-                        finalized = true;
-                    };
-                }
-            }
-            // flag used to shorten access to write-lock
-            if finalized {
-                if let Ok(mut last_id) = log_map.last_finalized_id.write() {
-                    *last_id = self.id;
-                }
-            }
-        }
-
-        self.id
+    /// Add a message describing the cause for this log-id
+    #[cfg(feature = "causes")]
+    pub fn add_cause(mut self, msg: &str) -> Self {
+        tracing::info!("{}(cause): {}", self.entry.id, msg);
+        add_addon_to_entry(&mut self, EntryKind::Cause(msg.to_owned()));
+        self
     }
 
+    /// Add diagnostics for this log-id
     #[cfg(feature = "diagnostics")]
-    pub fn add_diagnostic(self, diagnostic: Diagnostic) -> Self {
-        tracing::trace!("{}(diag): {:?}", self.id, diagnostic);
+    pub fn add_diagnostic(mut self, diagnostic: Diagnostic) -> Self {
+        tracing::trace!("{}(diag): {:?}", self.entry.id, diagnostic);
+        add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
+        self
+    }
 
-        if let Some(log_map) = self.map {
-            let update_map = log_map.map.write();
-            if let Ok(mut map) = update_map {
-                match map.get_mut(&self.id) {
-                    Some(entries) => {
-                        if let Some(mut entry) = entries.take_entry(&self) {
-                            entry.add_diagnostic(diagnostic);
-                            entries.insert(entry);
-                        };
+    /// Finalizing a [`LogIdEvent`] converts it back to a [`LogId`].
+    /// This prevents any further information to be added to it.
+    /// If the event was not created *silently*, it also moves the entry into the [`LogIdMap`] associated with the event.
+    pub fn finalize(&self) -> LogId {
+        let id = self.entry.id;
+        if self.crate_name.is_none() {
+            return id;
+        }
+
+        let crate_name = self.crate_name.unwrap();
+        match CRATES_MAP.map.get_mut(crate_name) {
+            Some(crate_map) => {
+                match crate_map.map.get_mut(&self.entry.id) {
+                    Some(mut id_entry) => {
+                        id_entry.insert(self.entry.clone());
                     }
                     None => {
-                        tracing::warn!(
-                            "Got diagnostic=\"{:?}\" for log-id={}, but no base for log-id was set!",
-                            diagnostic,
-                            self.id
-                        )
+                        crate_map
+                            .map
+                            .insert(self.entry.id, HashSet::from([self.entry.clone()]));
                     }
-                };
+                }
+
+                crate_map.last_finalized_id.store(id, Ordering::Relaxed);
+            }
+            None => {
+                let map = LogIdMap::new_with(
+                    vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
+                );
+                map.last_finalized_id.store(id, Ordering::Relaxed);
+                CRATES_MAP.map.insert(crate_name.to_owned(), map);
             }
         }
 
-        self
+        id
     }
 }
 
-fn add_addon_to_map(mapped_id: &MappedLogId, msg: &str, level: &tracing::Level) {
-    if let Some(log_map) = mapped_id.map {
-        let update_map = log_map.map.write();
-        if let Ok(mut map) = update_map {
-            match map.get_mut(&mapped_id.id) {
-                Some(entries) => {
-                    if let Some(mut entry) = entries.take_entry(mapped_id) {
-                        entry.add_addon(level, msg.to_string());
-                        entries.insert(entry);
-                    };
-                }
-                None => {
-                    tracing::warn!(
-                        "Got addon=\"{}\" for log-id={}, but no base for log-id was set!",
-                        msg,
-                        mapped_id.id
-                    )
-                }
-            };
-        }
+fn add_addon_to_entry(id_event: &mut LogIdEvent, kind: EntryKind) {
+    // Note: Silent events cannot move entries to a LogIdMap, so there is no need to store it either.
+    if id_event.crate_name.is_none() {
+        return;
+    }
+
+    match kind {
+        EntryKind::Info(msg) => id_event.entry.infos.push(msg),
+        EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
+        EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
+        EntryKind::Cause(msg) => id_event.entry.causes.push(msg),
+        EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
     }
 }
