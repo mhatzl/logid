@@ -268,12 +268,14 @@ impl LogIdEvent {
         }
 
         let crate_name = self.crate_name.unwrap();
-        if let Ok(locked_crate_map) = CRATES_MAP.map.lock() {
-            match locked_crate_map.get_mut(crate_name) {
+        let mut create_new_map = false;
+
+        if let Ok(locked_crate_map) = CRATES_MAP.map.read() {
+            match locked_crate_map.get(crate_name) {
                 Some(crate_map) => {
-                    if let Ok(locked_id_map) = crate_map.map.lock() {
+                    if let Ok(mut locked_id_map) = crate_map.map.write() {
                         match locked_id_map.get_mut(&self.entry.id) {
-                            Some(mut id_entry) => {
+                            Some(id_entry) => {
                                 id_entry.insert(self.entry.clone());
                             }
                             None => {
@@ -286,11 +288,37 @@ impl LogIdEvent {
                     crate_map.last_finalized_id.store(id, Ordering::Relaxed);
                 }
                 None => {
-                    let map = LogIdMap::new_with(
-                        vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
-                    );
-                    map.last_finalized_id.store(id, Ordering::Relaxed);
-                    locked_crate_map.insert(crate_name.to_owned(), map);
+                    create_new_map = true;
+                }
+            }
+        }
+
+        // Note: Duplication of get() is needed since another thread might have aquired a write lock between the above read lock and this write lock.
+        if create_new_map {
+            if let Ok(mut locked_crate_map) = CRATES_MAP.map.write() {
+                match locked_crate_map.get(crate_name) {
+                    Some(crate_map) => {
+                        if let Ok(mut locked_id_map) = crate_map.map.write() {
+                            match locked_id_map.get_mut(&self.entry.id) {
+                                Some(id_entry) => {
+                                    id_entry.insert(self.entry.clone());
+                                }
+                                None => {
+                                    locked_id_map
+                                        .insert(self.entry.id, HashSet::from([self.entry.clone()]));
+                                }
+                            }
+                        }
+
+                        crate_map.last_finalized_id.store(id, Ordering::Relaxed);
+                    }
+                    None => {
+                        let map = LogIdMap::new_with(
+                            vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
+                        );
+                        map.last_finalized_id.store(id, Ordering::Relaxed);
+                        locked_crate_map.insert(crate_name.to_owned(), map);
+                    }
                 }
             }
         }
