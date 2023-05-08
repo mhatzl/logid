@@ -23,3 +23,4 @@ causes = []
 
 [dev-dependencies]
 tracing-subscriber = "0.3.15"
+rayon = "1.7.0"

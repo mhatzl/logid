@@ -4,7 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     sync::{
         atomic::{AtomicIsize, Ordering},
-        Arc,
+        Arc, Mutex,
     },
 };
 
@@ -22,7 +22,7 @@ pub(crate) struct LogIdMap {
     /// Map to capture entries for set [`LogId`]s.
     /// Multiple entries per [`LogId`] might be possible
     /// if the [`LogId`] is used at multiple positions.
-    pub(crate) map: Arc<DashMap<LogId, HashSet<LogIdEntry>>>,
+    pub(crate) map: Arc<Mutex<DashMap<LogId, HashSet<LogIdEntry>>>>,
     /// Used to keep track of the last [`LogId`] that was
     /// entered in the map, and got marked as `drainable`.
     pub(crate) last_finalized_id: Arc<AtomicIsize>,
@@ -40,7 +40,7 @@ pub(crate) struct LogIdMap {
 /// Returns the last [`LogId`] that was marked `drainable`, or `None` if no [`LogIdMap`] was found
 /// for the given crate name, or if no [`LogId`] is `drainable`.
 pub fn get_last_finalized_id(crate_name: &str) -> Option<LogId> {
-    match CRATES_MAP.map.get(crate_name) {
+    match CRATES_MAP.map.lock().ok()?.get(crate_name) {
         Some(map) => map.get_last_finalized_id(),
         None => None,
     }
@@ -64,7 +64,7 @@ macro_rules! get_last_finalized_id {
 ///
 /// Returning all `drainable` entries of all captured [`LogId`]s of the map so far.
 pub fn drain_map(crate_name: &str) -> Option<HashMap<LogId, HashSet<LogIdEntry>>> {
-    match CRATES_MAP.map.get_mut(crate_name) {
+    match CRATES_MAP.map.lock().ok()?.get_mut(crate_name) {
         Some(mut map) => map.drain_map(),
         None => None,
     }
@@ -90,7 +90,7 @@ macro_rules! drain_map {
 /// Returns all captured [`LogIdEntry`]s marked as `drainable` for the given [`LogId`].
 /// If no entries are `drainable` or the [`LogIdMap`] could not be accessed, `None` is returned.
 pub fn get_entries(crate_name: &str, id: LogId) -> Option<HashSet<LogIdEntry>> {
-    match CRATES_MAP.map.get(crate_name) {
+    match CRATES_MAP.map.lock().ok()?.get(crate_name) {
         Some(map) => map.get_entries(id),
         None => None,
     }
@@ -119,7 +119,7 @@ macro_rules! get_entries {
 /// Returns all captured [`LogIdEntry`]s marked as `drainable` for the given [`LogId`].
 /// If no entries are `drainable` or the [`LogIdMap`] could not be accessed, `None` is returned.
 pub fn drain_entries(crate_name: &str, id: LogId) -> Option<HashSet<LogIdEntry>> {
-    match CRATES_MAP.map.get_mut(crate_name) {
+    match CRATES_MAP.map.lock().ok()?.get_mut(crate_name) {
         Some(mut map) => map.drain_entries(id),
         None => None,
     }
@@ -146,7 +146,7 @@ impl LogIdMap {
     /// Create a new [`LogIdMap`].
     pub fn new() -> Self {
         LogIdMap {
-            map: Arc::new(DashMap::new()),
+            map: Arc::new(Mutex::new(DashMap::new())),
             last_finalized_id: Arc::new(AtomicIsize::new(INVALID_LOG_ID)),
         }
     }
@@ -156,7 +156,7 @@ impl LogIdMap {
         I: Iterator<Item = (LogId, HashSet<LogIdEntry>)>,
     {
         LogIdMap {
-            map: Arc::new(DashMap::from_iter(values)),
+            map: Arc::new(Mutex::new(DashMap::from_iter(values))),
             last_finalized_id: Arc::new(AtomicIsize::new(INVALID_LOG_ID)),
         }
     }
@@ -178,18 +178,23 @@ impl LogIdMap {
         self.last_finalized_id
             .store(INVALID_LOG_ID, Ordering::Relaxed);
 
-        if self.map.is_empty() {
+        if self.map.lock().ok()?.is_empty() {
             return None;
         }
 
-        let mut map: HashMap<LogId, HashSet<LogIdEntry>> = HashMap::new();
-        self.map.alter_all(|id, entry| {
-            map.insert(*id, entry);
-            HashSet::new()
-        });
-        self.map.clear();
+        match self.map.lock() {
+            Ok(locked_map) => {
+                let mut map: HashMap<LogId, HashSet<LogIdEntry>> = HashMap::new();
+                locked_map.alter_all(|id, entry| {
+                    map.insert(*id, entry);
+                    HashSet::new()
+                });
+                locked_map.clear();
 
-        Some(map)
+                Some(map)
+            }
+            Err(_) => None,
+        }
     }
 
     /// Returns all captured entries for the given [`LogId`].
@@ -198,7 +203,7 @@ impl LogIdMap {
     ///
     /// * `id` ... The [`LogId`] used to search for entries
     pub fn get_entries(&self, id: LogId) -> Option<HashSet<LogIdEntry>> {
-        self.map.get(&id).map(|entry| entry.to_owned())
+        self.map.lock().ok()?.get(&id).map(|entry| entry.to_owned())
     }
 
     /// Drains all captured entries for the given [`LogId`].
@@ -212,6 +217,6 @@ impl LogIdMap {
                 .store(INVALID_LOG_ID, Ordering::Relaxed);
         }
 
-        self.map.remove(&id).map(|(_id, entry)| entry)
+        self.map.lock().ok()?.remove(&id).map(|(_id, entry)| entry)
     }
 }

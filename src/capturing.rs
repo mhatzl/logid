@@ -268,27 +268,30 @@ impl LogIdEvent {
         }
 
         let crate_name = self.crate_name.unwrap();
-        match CRATES_MAP.map.get_mut(crate_name) {
-            Some(crate_map) => {
-                match crate_map.map.get_mut(&self.entry.id) {
-                    Some(mut id_entry) => {
-                        id_entry.insert(self.entry.clone());
+        if let Ok(locked_crate_map) = CRATES_MAP.map.lock() {
+            match locked_crate_map.get_mut(crate_name) {
+                Some(crate_map) => {
+                    if let Ok(locked_id_map) = crate_map.map.lock() {
+                        match locked_id_map.get_mut(&self.entry.id) {
+                            Some(mut id_entry) => {
+                                id_entry.insert(self.entry.clone());
+                            }
+                            None => {
+                                locked_id_map
+                                    .insert(self.entry.id, HashSet::from([self.entry.clone()]));
+                            }
+                        }
                     }
-                    None => {
-                        crate_map
-                            .map
-                            .insert(self.entry.id, HashSet::from([self.entry.clone()]));
-                    }
-                }
 
-                crate_map.last_finalized_id.store(id, Ordering::Relaxed);
-            }
-            None => {
-                let map = LogIdMap::new_with(
-                    vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
-                );
-                map.last_finalized_id.store(id, Ordering::Relaxed);
-                CRATES_MAP.map.insert(crate_name.to_owned(), map);
+                    crate_map.last_finalized_id.store(id, Ordering::Relaxed);
+                }
+                None => {
+                    let map = LogIdMap::new_with(
+                        vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
+                    );
+                    map.last_finalized_id.store(id, Ordering::Relaxed);
+                    locked_crate_map.insert(crate_name.to_owned(), map);
+                }
             }
         }
 
