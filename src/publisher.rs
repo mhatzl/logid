@@ -1,6 +1,6 @@
 use std::{sync::{Arc, RwLock}, collections::HashMap, thread};
 
-use crossbeam_channel::{Sender, Receiver};
+use crossbeam_channel::{Sender, Receiver, Select};
 use once_cell::sync::Lazy;
 
 use crate::{log_id::LogId, id_entry::LogIdEntry};
@@ -15,9 +15,9 @@ pub(crate) struct LogIdEventPublisher {
   pub(crate) sender: Sender<EventMsg>,
 }
 
-/// Buffersize of the sync channel. One finalized event is passed over one message.
+/// Buffersize of bounded channels. One finalized event is passed over one message.
 ///
-/// See [sync_channel](https://doc.rust-lang.org/std/sync/mpsc/fn.sync_channel.html) for more information.
+/// See [crossbeam_channel::bounded](https://docs.rs/crossbeam-channel/latest/crossbeam_channel/fn.bounded.html) for more information.
 const CHANNEL_BOUND: usize = 1000;
 // TODO: Use when `unwrap_or` becomes available for const fn.
 // match option_env!("LOGID_EVENT_BUFFER") {
@@ -77,7 +77,7 @@ impl From<(Sender<EventMsg>, Receiver<EventMsg>)> for SubscriptionChannel {
 }
 
 
-pub fn subscribe(log_id: LogId, crate_name: &'static str, ) -> Option<Receiver<EventMsg>> {
+pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<Receiver<EventMsg>> {
   let key = SubscriptionKey::new(crate_name, log_id);
 
   if let Some(event_channel) = PUBLISHER.subscriptions.read().ok()?.get(&key) {
@@ -103,6 +103,62 @@ macro_rules! subscribe {
         )
     };
 }
+
+
+pub fn subscribe_to_logs<T>(log_ids: T, crate_name: &'static str) -> Option<Vec<Receiver<EventMsg>>>
+where T: Iterator<Item = LogId> {
+    let rcvs: Vec<Receiver<EventMsg>> = log_ids.filter_map(|log_id| {
+        subscribe(log_id, crate_name)
+    }).collect();
+
+    if rcvs.is_empty() {
+      return None;
+    }
+    Some(rcvs)
+}
+
+
+#[macro_export]
+macro_rules! subscribe_to_logs {
+    ($logids:ident) => {
+        $crate::publisher::subscribe_to_logs(
+            $crate::logids!($logids),
+            env!("CARGO_PKG_NAME"),
+        )
+    };
+    ($logids:expr) => {
+        $crate::publisher::subscribe_to_logs(
+            $crate::logids!($logids),
+            env!("CARGO_PKG_NAME"),
+        )
+    };
+}
+
+
+pub fn subscribe_to_crates<T, L>(crate_logs: T) -> Option<Vec<Receiver<EventMsg>>> 
+where 
+  L: Iterator<Item = LogId>,
+  T: Iterator<Item = (&'static str, L)> {
+    todo!();
+}
+
+pub fn receive_any(receiver: &[Receiver<EventMsg>], timeout: Option<std::time::Duration>) -> Option<EventMsg> {
+    let mut select = Select::new();
+    for rcv in receiver {
+      select.recv(rcv);
+    }
+    
+    let op = match timeout {
+        Some(duration) => select.select_timeout(duration).ok()?,
+        None => select.select(),
+    };
+
+    match receiver.get(op.index()) {
+        Some(rcv) => op.recv(rcv).ok(),
+        None => None,
+    }
+}
+
 
 pub(crate) fn on_event(event_msg: EventMsg) {
   let key = SubscriptionKey::new(event_msg.crate_name, event_msg.entry.id);

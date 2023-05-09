@@ -5,7 +5,7 @@
 /// **Note:** Wrapper of `isize` for easier `id <=> enum` conversion.
 pub type LogId = isize;
 
-/// Macro to convert an enum to a [`LogId`].
+/// Macro to convert an `enum` or `isize` to a [`LogId`].
 #[macro_export]
 macro_rules! logid {
     ($id:ident) => {
@@ -13,6 +13,17 @@ macro_rules! logid {
     };
     ($id:expr) => {
         ($id as $crate::log_id::LogId)
+    };
+}
+
+/// Macro to convert an iterator over `enum`s or `isize` to an iterator over [`LogId`]s.
+#[macro_export]
+macro_rules! logids {
+    ($ids:ident) => {
+        $ids.map(|id| $crate::logid!(*id))
+    };
+    ($ids:expr) => {
+        $ids.map(|id| $crate::logid!(*id))
     };
 }
 

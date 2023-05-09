@@ -1,11 +1,11 @@
-use logid::{log_id::{get_log_id, EventLevel}, set_event, publisher::subscribe, subscribe, logid};
+use logid::{log_id::{get_log_id, EventLevel}, set_event, publisher, subscribe, logid, subscribe_to_logs};
 
 #[test]
 fn subscribe_to_one_logid() {
   let log_id = get_log_id(0, 0, EventLevel::Error, 2);
   let msg = "Set first log message";
   
-  let recv = subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
+  let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
   set_event!(log_id, msg).finalize();
 
@@ -68,4 +68,84 @@ fn two_log_ids_separate_receiver() {
   let event_2 = recv_2.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
   assert_eq!(event_2.entry.get_id(), &log_id_2, "Received event 2 has wrong LogId.");
   assert_eq!(event_2.entry.get_msg(), msg_2, "Received event 2 has wrong msg.");
+}
+
+#[test]
+fn subscribe_to_two_log_ids_at_once() {
+  let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
+  let msg_1 = "Set first log message";
+  let log_id_2 = get_log_id(0, 0, EventLevel::Error, 3);
+  let msg_2 = "Set second log message";
+  
+  let recvs = publisher::subscribe_to_logs(vec![log_id_1, log_id_2].iter().copied(), env!("CARGO_PKG_NAME")).unwrap();
+  let recv_1 = &recvs[0];
+  let recv_2 = &recvs[1];
+
+  set_event!(log_id_1, msg_1).finalize();
+  set_event!(log_id_2, msg_2).finalize();
+
+  let event_1 = recv_1.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_1.entry.get_id(), &log_id_1, "Received event 1 has wrong LogId.");
+  assert_eq!(event_1.entry.get_msg(), msg_1, "Received event 1 has wrong msg.");
+
+  let event_2 = recv_2.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_2.entry.get_id(), &log_id_2, "Received event 2 has wrong LogId.");
+  assert_eq!(event_2.entry.get_msg(), msg_2, "Received event 2 has wrong msg.");
+}
+
+#[test]
+fn subscribe_to_two_log_ids_at_once_via_macro() {
+  let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
+  let msg_1 = "Set first log message";
+  let log_id_2 = get_log_id(0, 0, EventLevel::Error, 3);
+  let msg_2 = "Set second log message";
+  
+  let recvs = subscribe_to_logs!(vec![log_id_1, log_id_2].iter()).unwrap();
+  let recv_1 = &recvs[0];
+  let recv_2 = &recvs[1];
+
+  set_event!(log_id_1, msg_1).finalize();
+  set_event!(log_id_2, msg_2).finalize();
+
+  let event_1 = recv_1.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_1.entry.get_id(), &log_id_1, "Received event 1 has wrong LogId.");
+  assert_eq!(event_1.entry.get_msg(), msg_1, "Received event 1 has wrong msg.");
+
+  let event_2 = recv_2.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_2.entry.get_id(), &log_id_2, "Received event 2 has wrong LogId.");
+  assert_eq!(event_2.entry.get_msg(), msg_2, "Received event 2 has wrong msg.");
+}
+
+#[test]
+fn receive_timeouted_any_of_two_log_id_events() {
+  let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
+  let msg_1 = "Set first log message";
+  let log_id_2 = get_log_id(0, 0, EventLevel::Error, 3);
+  let msg_2 = "Set second log message";
+  
+  let recvs = subscribe_to_logs!(vec![log_id_1, log_id_2].iter()).unwrap();
+
+  set_event!(log_id_1, msg_1).finalize();
+  set_event!(log_id_2, msg_2).finalize();
+
+  let any_event = publisher::receive_any(&recvs, Some(std::time::Duration::from_millis(10))).unwrap();
+  assert!(any_event.entry.get_id() == &log_id_1 || any_event.entry.get_id() == &log_id_2, "Received event LogId matched neither log_id_1 nor log_id_2.");
+  assert!(any_event.entry.get_msg() == msg_1 || any_event.entry.get_msg() == msg_2, "Received event msg matched neither msg_1 nor msg_2.");
+}
+
+#[test]
+fn receive_any_of_two_log_id_events() {
+  let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
+  let msg_1 = "Set first log message";
+  let log_id_2 = get_log_id(0, 0, EventLevel::Error, 3);
+  let msg_2 = "Set second log message";
+  
+  let recvs = subscribe_to_logs!(vec![log_id_1, log_id_2].iter()).unwrap();
+
+  set_event!(log_id_1, msg_1).finalize();
+  set_event!(log_id_2, msg_2).finalize();
+
+  let any_event = publisher::receive_any(&recvs, None).unwrap();
+  assert!(any_event.entry.get_id() == &log_id_1 || any_event.entry.get_id() == &log_id_2, "Received event LogId matched neither log_id_1 nor log_id_2.");
+  assert!(any_event.entry.get_msg() == msg_1 || any_event.entry.get_msg() == msg_2, "Received event msg matched neither msg_1 nor msg_2.");
 }
