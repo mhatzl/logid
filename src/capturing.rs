@@ -1,11 +1,8 @@
-//! Offers functionality to set an event on a [`LogId`] and capture its content in a [`LogIdMap`].
-
-use std::{collections::HashSet, sync::atomic::Ordering};
+//! Offers functionality to set an event on a [`LogId`], and capture its content in a [`LogIdMap`].
 
 use crate::{
-    crate_map::CRATES_MAP,
+    crate_map::{EventMsg, CRATES_MAP},
     id_entry::{EntryKind, LogIdEntry},
-    id_map::LogIdMap,
     log_id::{EventLevel, LogId},
 };
 
@@ -34,18 +31,19 @@ pub trait LogIdTracing {
     ///
     /// # Arguments
     ///
-    /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
+    /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
     fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> LogIdEvent;
 }
 
-/// Macro to set a log event using the caller crate to identify the [`LogIdMap`].
+/// Macro to set an event for the given [`LogId`] using the caller crate to identify the [`LogIdMap`].\
+/// The caller crate is identified using the environment variable `CARGO_PKG_NAME` set by cargo.
 ///
 /// **Arguments:**
 ///
 /// * `logid` ... Must be a valid `LogId`
-/// * `msg` ... `String` variable or literal of the main message set for the event
+/// * `msg` ... `String` variable or literal of the main message set for the event (should be a user-centered event description)
 #[macro_export]
 macro_rules! set_event {
     ($logid:ident, $msg:ident) => {
@@ -86,7 +84,8 @@ macro_rules! set_event {
     };
 }
 
-/// Macro to set a silent log event.
+/// Macro to set a silent log event.\
+/// This is a convenient wrapper arounf [`LogIdTracing::set_silent_event`] that automatically converts the given [`LogId`].
 ///
 /// **Arguments:**
 ///
@@ -173,7 +172,7 @@ impl LogIdTracing for LogId {
 }
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct LogIdEvent {
     /// Crate name identifying the [`LogIdMap`] the [`LogIdEvent`] is associated with, or none for silent events.
     crate_name: Option<&'static str>,
@@ -200,9 +199,21 @@ impl PartialEq<LogIdEvent> for LogId {
 }
 
 impl Drop for LogIdEvent {
-    /// [`LogIdEvent`] is finalized on drop.
+    /// Drops the [`LogIdEvent`].
+    /// If the event was not created *silently*, it moves the entry into the [`LogIdMap`] associated with the event.
     fn drop(&mut self) {
-        self.finalize();
+        if self.crate_name.is_none() {
+            return;
+        }
+        let id = self.entry.id;
+        let crate_name = self.crate_name.unwrap();
+        if let Err(err) = CRATES_MAP.sender.send(EventMsg {
+            crate_name,
+            entry: std::mem::take(&mut self.entry),
+        }) {
+            tracing::error!("{}(send): {}", id, "Failed sending log-id to central map.");
+            tracing::debug!("{}(send-cause): {}", id, err);
+        }
     }
 }
 
@@ -261,68 +272,9 @@ impl LogIdEvent {
     /// Finalizing a [`LogIdEvent`] converts it back to a [`LogId`].
     /// This prevents any further information to be added to it.
     /// If the event was not created *silently*, it also moves the entry into the [`LogIdMap`] associated with the event.
-    pub fn finalize(&self) -> LogId {
+    pub fn finalize(self) -> LogId {
         let id = self.entry.id;
-        if self.crate_name.is_none() {
-            return id;
-        }
-
-        let crate_name = self.crate_name.unwrap();
-        let mut create_new_map = false;
-
-        if let Ok(locked_crate_map) = CRATES_MAP.map.read() {
-            match locked_crate_map.get(crate_name) {
-                Some(crate_map) => {
-                    if let Ok(mut locked_id_map) = crate_map.map.write() {
-                        match locked_id_map.get_mut(&self.entry.id) {
-                            Some(id_entry) => {
-                                id_entry.insert(self.entry.clone());
-                            }
-                            None => {
-                                locked_id_map
-                                    .insert(self.entry.id, HashSet::from([self.entry.clone()]));
-                            }
-                        }
-                    }
-
-                    crate_map.last_finalized_id.store(id, Ordering::Relaxed);
-                }
-                None => {
-                    create_new_map = true;
-                }
-            }
-        }
-
-        // Note: Duplication of get() is needed since another thread might have aquired a write lock between the above read lock and this write lock.
-        if create_new_map {
-            if let Ok(mut locked_crate_map) = CRATES_MAP.map.write() {
-                match locked_crate_map.get(crate_name) {
-                    Some(crate_map) => {
-                        if let Ok(mut locked_id_map) = crate_map.map.write() {
-                            match locked_id_map.get_mut(&self.entry.id) {
-                                Some(id_entry) => {
-                                    id_entry.insert(self.entry.clone());
-                                }
-                                None => {
-                                    locked_id_map
-                                        .insert(self.entry.id, HashSet::from([self.entry.clone()]));
-                                }
-                            }
-                        }
-
-                        crate_map.last_finalized_id.store(id, Ordering::Relaxed);
-                    }
-                    None => {
-                        let map = LogIdMap::new_with(
-                            vec![(self.entry.id, HashSet::from([self.entry.clone()]))].into_iter(),
-                        );
-                        map.last_finalized_id.store(id, Ordering::Relaxed);
-                        locked_crate_map.insert(crate_name.to_owned(), map);
-                    }
-                }
-            }
-        }
-
+        drop(self);
         id
     }
 }

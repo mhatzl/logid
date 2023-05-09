@@ -7,6 +7,9 @@ use logid::{
     set_event,
 };
 
+mod helper;
+use crate::helper::delayed_map_drain;
+
 #[test]
 fn set_different_events_in_two_threads() {
     drain_map!();
@@ -22,11 +25,11 @@ fn set_different_events_in_two_threads() {
 
     let msg = "Set main thread message";
     let event = set_event!(log_id_main, msg);
-    event.finalize();
+    event.clone().finalize();
 
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     assert_eq!(map.len(), 2, "More or less than two events captured!");
 
     assert!(
@@ -61,11 +64,11 @@ fn set_same_logid_in_two_threads() {
 
     let msg = "Set main thread message";
     let event = set_event!(log_id, msg);
-    event.finalize();
+    event.clone().finalize();
 
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     assert_eq!(map.len(), 1, "More or less than one event captured!");
 
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -106,7 +109,7 @@ fn set_events_in_many_threads() {
         }
     });
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     assert_eq!(
         map.len(),
         THREAD_CNT as usize,

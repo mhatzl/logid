@@ -8,6 +8,9 @@ use logid::{
     set_event, set_silent_event,
 };
 
+mod helper;
+use crate::helper::delayed_map_drain;
+
 #[test]
 fn capture_single_logid() {
     // Make sure global map is empty
@@ -16,9 +19,9 @@ fn capture_single_logid() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let event = set_event!(log_id, msg);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -48,7 +51,7 @@ fn capture_single_logid() {
     );
     assert_eq!(
         *entry.get_origin(),
-        Origin::new(file!(), 18),
+        Origin::new(file!(), line!() - 33), //Note: Event is set 33 lines above
         "Set and stored origins are not equal"
     );
 }
@@ -63,9 +66,9 @@ fn capture_single_logid_with_cause() {
     let cause = "Something caused this log-id";
     let line = line!() + 1;
     let event = set_event!(log_id, msg).add_cause(cause);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -112,9 +115,9 @@ fn capture_single_logid_with_info() {
     let msg = "Set first log message";
     let info = "Additional info for this log-id";
     let event = set_event!(log_id, msg).add_info(info);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -155,9 +158,9 @@ fn capture_single_logid_with_debug() {
     let msg = "Set first log message";
     let debug = "Additional debug info for this log-id";
     let event = set_event!(log_id, msg).add_debug(debug);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -198,9 +201,9 @@ fn capture_single_logid_with_trace() {
     let msg = "Set first log message";
     let trace = "Additional debug info for this log-id";
     let event = set_event!(log_id, msg).add_trace(trace);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -240,9 +243,9 @@ fn capture_single_logid_with_custom_map() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let event = set_event!(log_id, msg);
-    event.finalize();
+    event.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -280,11 +283,11 @@ fn capture_two_logids_with_custom_map() {
     let log_id_2 = get_log_id(1, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let event_1 = set_event!(log_id_1, msg);
-    event_1.finalize();
+    event_1.clone().finalize();
     let event_2 = set_event!(log_id_2, msg);
-    event_2.finalize();
+    event_2.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 2, "More than two or less events captured!");
     assert!(
@@ -333,7 +336,6 @@ fn single_logid_without_capture() {
     set_silent_event!(log_id, msg).finalize();
 
     let map = drain_map!();
-    dbg!(&map);
     assert!(map.is_none(), "Map has entries");
 }
 
@@ -344,7 +346,7 @@ fn logid_equal_to_mapped_id() {
     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
     let msg = "Set first log message";
     let event = set_silent_event!(log_id, msg);
-    event.finalize();
+    event.clone().finalize();
 
     assert!(event == log_id, "LogIdEvent and LogId are not equal");
     assert!(log_id == event, "LogId and LogIdEvent are not equal");
@@ -365,10 +367,10 @@ fn logid_with_span() {
 
     let _ = span.in_scope(|| {
         event = set_event!(log_id, msg);
-        event.finalize()
+        event.clone().finalize()
     });
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     let entries = map.get(&log_id).unwrap();
     let entry = entries.get_entry(&event).unwrap();
@@ -384,12 +386,12 @@ fn capture_same_logid_twice_with_different_origin() {
     let msg = "Set first log message";
     let line_1 = line!() + 1;
     let event_1 = set_event!(log_id, msg);
-    event_1.finalize();
+    event_1.clone().finalize();
     let line_2 = line!() + 1;
     let event_2 = set_event!(log_id, msg);
-    event_2.finalize();
+    event_2.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than two or less events captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -435,11 +437,11 @@ fn capture_same_logid_twice_with_same_origin() {
     let file = file!();
     let line = line!();
     let event_1 = log_id.set_event(env!("CARGO_PKG_NAME"), msg, file, line);
-    event_1.finalize();
+    event_1.clone().finalize();
     let event_2 = log_id.set_event(env!("CARGO_PKG_NAME"), msg, file, line);
-    event_2.finalize();
+    event_2.clone().finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than two or less events captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -490,7 +492,7 @@ fn map_empty_after_draining() {
     let event = set_event!(log_id, msg);
     event.finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     assert_eq!(map.len(), 2, "More than two or less events captured!");
 
     assert!(drain_map!().is_none(), "Map was not drained!");

@@ -4,6 +4,10 @@ use logid::{
     log_id::{get_log_id, EventLevel},
     set_event,
 };
+
+mod helper;
+use crate::helper::delayed_map_drain;
+
 #[test]
 fn set_event_with_macro() {
     drain_map!();
@@ -13,7 +17,7 @@ fn set_event_with_macro() {
 
     let log_id = set_event!(log_id, msg).finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
@@ -35,7 +39,7 @@ fn set_event_with_macro() {
         *entry.get_origin(),
         Origin {
             filename: file!().to_string(),
-            line_nr: 14,
+            line_nr: line!() - 24,
         },
         "Origin of log_id not set correctly"
     );
@@ -56,14 +60,14 @@ fn set_event_with_literal_msg() {
 
     let log_id = set_event!(log_id, "Set first log message").finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     let entries = map.get(&log_id).unwrap();
     let entry = entries.iter().last().unwrap();
     assert_eq!(
         *entry.get_origin(),
         Origin {
             filename: file!().to_string(),
-            line_nr: 57
+            line_nr: line!() - 9
         },
         "Origin of log_id not set correctly"
     );
@@ -77,14 +81,14 @@ fn set_event_macro() {
 
     let log_id = set_event!(log_id, "Set first log message").finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     let entries = map.get(&log_id).unwrap();
     let entry = entries.iter().last().unwrap();
     assert_eq!(
         *entry.get_origin(),
         Origin {
             filename: file!().to_string(),
-            line_nr: 78,
+            line_nr: line!() - 9,
         },
         "Origin of log_id not set correctly"
     );
@@ -99,7 +103,7 @@ fn set_event_macro_using_expression() {
     let log_id =
         set_event!(log_id, &format!("Set first log message with id={}", log_id)).finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     let entries = map.get(&log_id).unwrap();
     let entry = entries.iter().last().unwrap();
     assert_eq!(*entry.get_id(), log_id, "ID of log_id not set correctly");
@@ -114,7 +118,7 @@ fn global_entries_accessed() {
 
     let log_id = set_event!(log_id, msg).finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
     let entries = map.get(&log_id).unwrap();
     let entry = entries.iter().last().unwrap();
     assert_eq!(
@@ -140,7 +144,7 @@ fn set_event_with_enum() {
     let msg = "Set first log message";
     let log_id = set_event!(TestLogId::Id, msg).finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     assert_eq!(map.len(), 1, "More than one or no event captured!");
     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");

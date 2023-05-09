@@ -8,6 +8,9 @@ use logid::{
     set_event,
 };
 
+mod helper;
+use crate::helper::delayed_map_drain;
+
 #[cfg(feature = "diagnostics")]
 #[test]
 fn capture_single_logid_with_diagnostics() {
@@ -32,7 +35,7 @@ fn capture_single_logid_with_diagnostics() {
     let event = set_event!(log_id, msg).add_diagnostic(diagnostics.clone());
     event.finalize();
 
-    let map = drain_map!().unwrap();
+    let map = delayed_map_drain();
 
     let entries = map.get(&log_id).unwrap();
     let entries = entries.iter().collect::<Vec<&LogIdEntry>>();
