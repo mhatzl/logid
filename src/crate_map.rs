@@ -52,7 +52,7 @@ impl CratesMap {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct EventMsg {
     pub crate_name: &'static str,
     pub entry: LogIdEntry,
@@ -65,21 +65,7 @@ fn finalize_log_event(mut event_msg: EventMsg) {
     if let Ok(locked_crate_map) = CRATES_MAP.map.read() {
         match locked_crate_map.get(event_msg.crate_name) {
             Some(crate_map) => {
-                if let Ok(mut locked_id_map) = crate_map.map.write() {
-                    match locked_id_map.get_mut(&event_msg.entry.id) {
-                        Some(id_entry) => {
-                            id_entry.insert(std::mem::take(&mut event_msg.entry));
-                        }
-                        None => {
-                            locked_id_map.insert(
-                                event_msg.entry.id,
-                                HashSet::from([std::mem::take(&mut event_msg.entry)]),
-                            );
-                        }
-                    }
-                }
-
-                crate_map.last_finalized_id.store(id, Ordering::Relaxed);
+                add_entry_to_map(std::mem::take(&mut event_msg), crate_map);
             }
             None => {
                 create_new_map = true;
@@ -92,22 +78,11 @@ fn finalize_log_event(mut event_msg: EventMsg) {
         if let Ok(mut locked_crate_map) = CRATES_MAP.map.write() {
             match locked_crate_map.get(event_msg.crate_name) {
                 Some(crate_map) => {
-                    if let Ok(mut locked_id_map) = crate_map.map.write() {
-                        match locked_id_map.get_mut(&id) {
-                            Some(id_entry) => {
-                                id_entry.insert(event_msg.entry);
-                            }
-                            None => {
-                                locked_id_map.insert(id, HashSet::from([event_msg.entry]));
-                            }
-                        }
-                    }
-
-                    crate_map.last_finalized_id.store(id, Ordering::Relaxed);
+                    add_entry_to_map(event_msg, crate_map);
                 }
                 None => {
                     let map = LogIdMap::new_with(
-                        vec![(id, HashSet::from([event_msg.entry]))].into_iter(),
+                        vec![(id, RwLock::new(HashSet::from([event_msg.entry])))].into_iter(),
                     );
                     map.last_finalized_id.store(id, Ordering::Relaxed);
                     locked_crate_map.insert(event_msg.crate_name.to_owned(), map);
@@ -115,4 +90,40 @@ fn finalize_log_event(mut event_msg: EventMsg) {
             }
         }
     }
+}
+
+fn add_entry_to_map(mut event_msg: EventMsg, crate_map: &LogIdMap) {
+    let id = event_msg.entry.id;
+    let mut create_new_key = false;
+
+    if let Ok(locked_id_map) = crate_map.map.read() {
+        match locked_id_map.get(&id) {
+            Some(id_entry) => {
+                if let Ok(mut locked_id_entry) = id_entry.write() {
+                    locked_id_entry.insert(std::mem::take(&mut event_msg.entry));
+                }
+            }
+            None => {
+                create_new_key = true;
+            }
+        }
+    }
+
+    // Note: Duplication of get() is needed since another thread might have aquired a write lock between the above read lock and this write lock.
+    if create_new_key {
+        if let Ok(mut locked_id_map) = crate_map.map.write() {
+            match locked_id_map.get(&id) {
+                Some(id_entry) => {
+                    if let Ok(mut locked_id_entry) = id_entry.write() {
+                        locked_id_entry.insert(event_msg.entry);
+                    }
+                }
+                None => {
+                    locked_id_map.insert(id, RwLock::new(HashSet::from([event_msg.entry])));
+                }
+            }
+        }
+    }
+
+    crate_map.last_finalized_id.store(id, Ordering::Relaxed);
 }

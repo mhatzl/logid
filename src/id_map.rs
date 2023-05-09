@@ -20,7 +20,7 @@ pub(crate) struct LogIdMap {
     /// Map to capture entries for set [`LogId`]s.
     /// Multiple entries per [`LogId`] might be possible
     /// if the [`LogId`] is used at multiple positions.
-    pub(crate) map: Arc<RwLock<HashMap<LogId, HashSet<LogIdEntry>>>>,
+    pub(crate) map: Arc<RwLock<HashMap<LogId, RwLock<HashSet<LogIdEntry>>>>>,
     /// Used to keep track of the last [`LogId`] that was
     /// entered in the map, and got marked as `drainable`.
     pub(crate) last_finalized_id: Arc<AtomicIsize>,
@@ -151,7 +151,7 @@ impl LogIdMap {
 
     pub fn new_with<I>(values: I) -> Self
     where
-        I: Iterator<Item = (LogId, HashSet<LogIdEntry>)>,
+        I: Iterator<Item = (LogId, RwLock<HashSet<LogIdEntry>>)>,
     {
         LogIdMap {
             map: Arc::new(RwLock::new(HashMap::from_iter(values))),
@@ -181,16 +181,15 @@ impl LogIdMap {
         }
         // Note: Since map is behind a RwLock, write access is safe even though we do not require *mut* for self.
         match self.map.write() {
-            Ok(mut locked_map) => {
-                // let mut map: HashMap<LogId, HashSet<LogIdEntry>> = HashMap::new();
-                // locked_map.alter_all(|id, entry| {
-                //     map.insert(*id, entry);
-                //     HashSet::new()
-                // });
-                // locked_map.clear();
-
-                Some(locked_map.drain().collect())
-            }
+            Ok(mut locked_map) => Some(
+                locked_map
+                    .drain()
+                    .filter_map(|(k, v)| match v.write() {
+                        Ok(mut entries) => Some((k, entries.drain().collect())),
+                        Err(_) => None,
+                    })
+                    .collect(),
+            ),
             Err(_) => None,
         }
     }
@@ -201,7 +200,7 @@ impl LogIdMap {
     ///
     /// * `id` ... The [`LogId`] used to search for entries
     pub fn get_entries(&self, id: LogId) -> Option<HashSet<LogIdEntry>> {
-        self.map.read().ok()?.get(&id).map(|entry| entry.to_owned())
+        Some(self.map.read().ok()?.get(&id)?.read().ok()?.to_owned())
     }
 
     /// Drains all captured entries for the given [`LogId`].
@@ -215,6 +214,15 @@ impl LogIdMap {
                 .store(INVALID_LOG_ID, Ordering::Relaxed);
         }
 
-        self.map.write().ok()?.remove(&id)
+        Some(
+            self.map
+                .write()
+                .ok()?
+                .remove(&id)?
+                .write()
+                .ok()?
+                .drain()
+                .collect(),
+        )
     }
 }
