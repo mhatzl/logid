@@ -30,3 +30,4 @@ pub mod crate_map;
 pub mod id_entry;
 pub mod id_map;
 pub mod log_id;
+pub mod publisher;

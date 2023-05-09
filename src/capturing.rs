@@ -1,9 +1,8 @@
 //! Offers functionality to set an event on a [`LogId`], and capture its content in a [`LogIdMap`].
 
 use crate::{
-    crate_map::{EventMsg, CRATES_MAP},
     id_entry::{EntryKind, LogIdEntry},
-    log_id::{EventLevel, LogId},
+    log_id::{EventLevel, LogId}, publisher::{PUBLISHER, EventMsg},
 };
 
 #[cfg(feature = "diagnostics")]
@@ -207,7 +206,7 @@ impl Drop for LogIdEvent {
         }
         let id = self.entry.id;
         let crate_name = self.crate_name.unwrap();
-        if let Err(err) = CRATES_MAP.sender.send(EventMsg {
+        if let Err(err) = PUBLISHER.sender.send(EventMsg {
             crate_name,
             entry: std::mem::take(&mut self.entry),
         }) {
