@@ -84,7 +84,7 @@ macro_rules! set_event {
 }
 
 /// Macro to set a silent log event.\
-/// This is a convenient wrapper arounf [`LogIdTracing::set_silent_event`] that automatically converts the given [`LogId`].
+/// This is a convenient wrapper around [`LogIdTracing::set_silent_event`] that automatically converts the given [`LogId`].
 ///
 /// **Arguments:**
 ///

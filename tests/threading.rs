@@ -1,134 +1,102 @@
-// use std::thread;
+use std::thread;
 
-// use logid::{
-//     drain_map,
-//     id_entry::LogIdEntrySet,
-//     log_id::{get_log_id, EventLevel},
-//     set_event,
-// };
+use crossbeam_channel::Receiver;
+use logid::{
+    log_id::{get_log_id, EventLevel},
+    set_event, subscribe, publisher::EventMsg,
+};
 
-// mod helper;
-// use crate::helper::delayed_map_drain;
+#[test]
+fn set_different_events_in_two_threads() {
+    let log_id_side = get_log_id(0, 0, EventLevel::Error, 1);
+    let msg_side = "Set side thread log message";
+    let log_id_main = get_log_id(0, 0, EventLevel::Error, 2);
+    let msg_main = "Set main thread message";
+    
+    let recv_side = subscribe!(log_id_side).unwrap();
+    let recv_main = subscribe!(log_id_main).unwrap();
 
-// #[test]
-// fn set_different_events_in_two_threads() {
-//     drain_map!();
+    let side_thread = thread::spawn(move || {
+        set_event!(log_id_side, msg_side).finalize();
+    });
 
-//     let log_id_side = get_log_id(0, 0, EventLevel::Error, 1);
-//     let log_id_main = get_log_id(0, 0, EventLevel::Error, 2);
+    set_event!(log_id_main, msg_main).finalize();
 
-//     let side_thread = thread::spawn(move || {
-//         let msg = "Set side thread log message";
-//         let event = set_event!(log_id_side, msg);
-//         event.finalize();
-//     });
+    assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-//     let msg = "Set main thread message";
-//     let event = set_event!(log_id_main, msg);
-//     event.clone().finalize();
+    let event_side = recv_side.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+    assert_eq!(event_side.entry.get_id(), &log_id_side, "Received side event has wrong LogId.");
+    assert_eq!(event_side.entry.get_msg(), msg_side, "Received side event has wrong msg.");
 
-//     assert!(side_thread.join().is_ok(), "Side thread panicked.");
+    let event_main = recv_main.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+    assert_eq!(event_main.entry.get_id(), &log_id_main, "Received main event has wrong LogId.");
+    assert_eq!(event_main.entry.get_msg(), msg_main, "Received main event has wrong msg.");    
+}
 
-//     let map = delayed_map_drain();
-//     assert_eq!(map.len(), 2, "More or less than two events captured!");
+#[test]
+fn set_same_logid_in_two_threads() {
+    let log_id = get_log_id(0, 0, EventLevel::Error, 1);
+    let msg_side = "Set side thread log message";
+    let msg_main = "Set main thread message";
 
-//     assert!(
-//         map.contains_key(&log_id_side),
-//         "Side Log-id not inside captured map!"
-//     );
-//     assert!(
-//         map.contains_key(&log_id_main),
-//         "Main Log-id not inside captured map!"
-//     );
+    let recv = subscribe!(log_id).unwrap();
 
-//     let entries = map.get(&log_id_main).unwrap();
-//     let entry = entries.get_entry(&event).unwrap();
-//     assert_eq!(
-//         *entry.get_msg(),
-//         msg,
-//         "Set and stored main thread messages are not equal"
-//     );
-// }
+    let side_thread = thread::spawn(move || {
+        set_event!(log_id, msg_side).finalize();
+    });
 
-// #[test]
-// fn set_same_logid_in_two_threads() {
-//     drain_map!();
+    set_event!(log_id, msg_main).finalize();
 
-//     let log_id = get_log_id(0, 0, EventLevel::Error, 1);
+    assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-//     let side_thread = thread::spawn(move || {
-//         let msg = "Set side thread log message";
-//         let event = set_event!(log_id, msg);
-//         event.finalize();
-//     });
+    let event_1 = recv.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+    assert_eq!(event_1.entry.get_id(), &log_id, "Received event 1 has wrong LogId.");
+    assert!(event_1.entry.get_msg() == msg_main || event_1.entry.get_msg() == msg_side, "Received event 1 has wrong msg.");
 
-//     let msg = "Set main thread message";
-//     let event = set_event!(log_id, msg);
-//     event.clone().finalize();
+    let event_2 = recv.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+    assert_eq!(event_2.entry.get_id(), &log_id, "Received event 2 has wrong LogId.");
+    assert!(event_2.entry.get_msg() == msg_main || event_2.entry.get_msg() == msg_side, "Received event 2 has wrong msg.");
 
-//     assert!(side_thread.join().is_ok(), "Side thread panicked.");
+    assert_ne!(event_1.entry.get_msg(), event_2.entry.get_msg(), "Both events have the same msg.");  
+}
 
-//     let map = delayed_map_drain();
-//     assert_eq!(map.len(), 1, "More or less than one event captured!");
+#[test]
+fn set_events_in_many_threads() {
+    const THREAD_CNT: u8 = 63; // Note: 63 is the maximum for the local nr of a LogId
+    let base_log_id = get_log_id(0, 0, EventLevel::Error, 1);
+    let msg = "Set log message";
 
-//     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+    let mut recvs: Vec<Receiver<EventMsg>> = Vec::new();
+    for i in 1..=THREAD_CNT {
+      let loop_id = get_log_id(0, 0, EventLevel::Error, i);
+      recvs.push(subscribe!(loop_id).unwrap());
+    }
 
-//     let entries = map.get(&log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         2,
-//         "More or less than two entries for the same log-id captured!"
-//     );
+    set_event!(base_log_id, msg).finalize();
 
-//     let entry = entries.get_entry(&event).unwrap();
-//     assert_eq!(
-//         *entry.get_msg(),
-//         msg,
-//         "Set and stored main thread messages are not equal"
-//     );
-// }
+    rayon::scope(|s| {
+        // start at 2 to jump over base_log_id
+        for i in 2..=THREAD_CNT {
+            s.spawn(move |_| {
+                let loop_id = get_log_id(0, 0, EventLevel::Error, i);
 
-// #[test]
-// fn set_events_in_many_threads() {
-//     drain_map!();
+                // Note: `finalize()` would not be needed, since events are finalized on drop, but it makes this test easier to read
+                set_event!(base_log_id, msg).finalize();
+                set_event!(loop_id, msg).finalize();
+            });
+        }
+    });
 
-//     const THREAD_CNT: u8 = 63; // Note: 63 is the maximum for the local nr of a LogId
-//     let base_log_id = get_log_id(0, 0, EventLevel::Error, 1);
-//     let msg = "Set log message";
+    for i in 1..=THREAD_CNT {
+        let log_id = get_log_id(0, 0, EventLevel::Error, i);
 
-//     set_event!(base_log_id, msg).finalize();
+        let event = recvs[(i-1) as usize].recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+        assert_eq!(event.entry.get_id(), &log_id, "Received event {} has wrong LogId.", i);
+    }
 
-//     rayon::scope(|s| {
-//         // start at 2 to jump over base_log_id
-//         for i in 2..=THREAD_CNT {
-//             s.spawn(move |_| {
-//                 // Note: `finalize()` would not be needed, since events are finalized on drop, but it makes this test easier to read
-//                 set_event!(base_log_id, msg).finalize();
-//                 set_event!(get_log_id(0, 0, EventLevel::Error, i), msg).finalize();
-//             });
-//         }
-//     });
-
-//     let map = delayed_map_drain();
-//     assert_eq!(
-//         map.len(),
-//         THREAD_CNT as usize,
-//         "Not all log-id events captured!"
-//     );
-
-//     for i in 1..=THREAD_CNT {
-//         let log_id = get_log_id(0, 0, EventLevel::Error, i);
-//         assert!(
-//             map.contains_key(&log_id),
-//             "Log-id {} not inside captured map!",
-//             log_id
-//         );
-//     }
-
-//     let entries = map.get(&base_log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         THREAD_CNT as usize,
-//         "Not all base log-id event entries captured!"
-//     );
-// }
+    // Note: Starting at "2", because one rcv was already consumed in loop above
+    for i in 2..=THREAD_CNT {
+      let event = recvs[0].recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+      assert_eq!(event.entry.get_id(), &base_log_id, "Received event {} has wrong LogId.", i);
+    }
+}

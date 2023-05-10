@@ -71,6 +71,25 @@ fn two_log_ids_separate_receiver() {
 }
 
 #[test]
+fn one_log_id_separate_receiver() {
+  let log_id = get_log_id(0, 0, EventLevel::Error, 2);
+  let msg = "Set first log message";
+  
+  let recv_1 = subscribe!(log_id).unwrap();
+  let recv_2 = subscribe!(log_id).unwrap();
+
+  set_event!(log_id, msg).finalize();
+
+  let event_1 = recv_1.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_1.entry.get_id(), &log_id, "Received event 1 has wrong LogId.");
+  assert_eq!(event_1.entry.get_msg(), msg, "Received event 1 has wrong msg.");
+
+  let event_2 = recv_2.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
+  assert_eq!(event_2.entry.get_id(), &log_id, "Received event 2 has wrong LogId.");
+  assert_eq!(event_2.entry.get_msg(), msg, "Received event 2 has wrong msg.");
+}
+
+#[test]
 fn subscribe_to_two_log_ids_at_once() {
   let log_id_1 = get_log_id(0, 0, EventLevel::Error, 2);
   let msg_1 = "Set first log message";

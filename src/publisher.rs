@@ -10,7 +10,7 @@ pub(crate) static PUBLISHER: Lazy<LogIdEventPublisher> = Lazy::new(LogIdEventPub
 
 
 pub(crate) struct LogIdEventPublisher {
-  pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, SubscriptionChannel>>>,
+  pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, Vec<Sender<EventMsg>>>>>,
 
   pub(crate) sender: Sender<EventMsg>,
 }
@@ -43,7 +43,7 @@ impl LogIdEventPublisher {
 }
 
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EventMsg {
     pub crate_name: &'static str,
     pub entry: LogIdEntry,
@@ -62,30 +62,13 @@ impl SubscriptionKey {
   }
 }
 
-pub(crate) struct SubscriptionChannel {
-  sender: Sender<EventMsg>,
-  receiver: Receiver<EventMsg>,
-}
-
-impl From<(Sender<EventMsg>, Receiver<EventMsg>)> for SubscriptionChannel {
-    fn from(value: (Sender<EventMsg>, Receiver<EventMsg>)) -> Self {
-      SubscriptionChannel {
-        sender: value.0,
-        receiver: value.1,
-    }
-    }
-}
-
-
 pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<Receiver<EventMsg>> {
   let key = SubscriptionKey::new(crate_name, log_id);
+  let (sender, receiver) = crossbeam_channel::bounded(CHANNEL_BOUND);
 
-  if let Some(event_channel) = PUBLISHER.subscriptions.read().ok()?.get(&key) {
-    return Some(event_channel.receiver.clone());
-  }
+  PUBLISHER.subscriptions.write().ok()?.entry(key).and_modify(|c| c.push(sender.clone())).or_insert(vec![sender]);
 
-  let sub_channel = SubscriptionChannel::from(crossbeam_channel::bounded(CHANNEL_BOUND));
-  Some(PUBLISHER.subscriptions.write().ok()?.entry(key).or_insert(sub_channel).receiver.clone())
+  Some(receiver)
 }
 
 #[macro_export]
@@ -204,8 +187,10 @@ pub(crate) fn on_event(event_msg: EventMsg) {
   let key = SubscriptionKey::new(event_msg.crate_name, event_msg.entry.id);
 
   if let Ok(locked_subscriptions) = PUBLISHER.subscriptions.read() {
-    if let Some(sub_channel) = locked_subscriptions.get(&key) {
-      let _ = sub_channel.sender.try_send(event_msg);
+    if let Some(senders) = locked_subscriptions.get(&key) {
+      senders.iter().for_each(|sender| {
+        let _ = sender.try_send(event_msg.clone());
+      });
     }
   }
 }
