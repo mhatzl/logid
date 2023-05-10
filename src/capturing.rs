@@ -2,7 +2,8 @@
 
 use crate::{
     id_entry::{EntryKind, LogIdEntry},
-    log_id::{EventLevel, LogId}, publisher::{PUBLISHER, EventMsg, SubscriptionKey},
+    log_id::{EventLevel, LogId},
+    publisher::{EventMsg, SubscriptionKey, PUBLISHER},
 };
 
 #[cfg(feature = "diagnostics")]

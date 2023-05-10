@@ -3,7 +3,8 @@ use std::thread;
 use crossbeam_channel::Receiver;
 use logid::{
     log_id::{get_log_id, EventLevel},
-    set_event, subscribe, publisher::EventMsg,
+    publisher::EventMsg,
+    set_event, subscribe,
 };
 
 #[test]
@@ -12,7 +13,7 @@ fn set_different_events_in_two_threads() {
     let msg_side = "Set side thread log message";
     let log_id_main = get_log_id(0, 0, EventLevel::Error, 2);
     let msg_main = "Set main thread message";
-    
+
     let recv_side = subscribe!(log_id_side).unwrap();
     let recv_main = subscribe!(log_id_main).unwrap();
 
@@ -24,13 +25,33 @@ fn set_different_events_in_two_threads() {
 
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-    let event_side = recv_side.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-    assert_eq!(event_side.entry.get_id(), &log_id_side, "Received side event has wrong LogId.");
-    assert_eq!(event_side.entry.get_msg(), msg_side, "Received side event has wrong msg.");
+    let event_side = recv_side
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    assert_eq!(
+        event_side.entry.get_id(),
+        &log_id_side,
+        "Received side event has wrong LogId."
+    );
+    assert_eq!(
+        event_side.entry.get_msg(),
+        msg_side,
+        "Received side event has wrong msg."
+    );
 
-    let event_main = recv_main.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-    assert_eq!(event_main.entry.get_id(), &log_id_main, "Received main event has wrong LogId.");
-    assert_eq!(event_main.entry.get_msg(), msg_main, "Received main event has wrong msg.");    
+    let event_main = recv_main
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    assert_eq!(
+        event_main.entry.get_id(),
+        &log_id_main,
+        "Received main event has wrong LogId."
+    );
+    assert_eq!(
+        event_main.entry.get_msg(),
+        msg_main,
+        "Received main event has wrong msg."
+    );
 }
 
 #[test]
@@ -49,15 +70,37 @@ fn set_same_logid_in_two_threads() {
 
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
-    let event_1 = recv.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-    assert_eq!(event_1.entry.get_id(), &log_id, "Received event 1 has wrong LogId.");
-    assert!(event_1.entry.get_msg() == msg_main || event_1.entry.get_msg() == msg_side, "Received event 1 has wrong msg.");
+    let event_1 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    assert_eq!(
+        event_1.entry.get_id(),
+        &log_id,
+        "Received event 1 has wrong LogId."
+    );
+    assert!(
+        event_1.entry.get_msg() == msg_main || event_1.entry.get_msg() == msg_side,
+        "Received event 1 has wrong msg."
+    );
 
-    let event_2 = recv.recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-    assert_eq!(event_2.entry.get_id(), &log_id, "Received event 2 has wrong LogId.");
-    assert!(event_2.entry.get_msg() == msg_main || event_2.entry.get_msg() == msg_side, "Received event 2 has wrong msg.");
+    let event_2 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    assert_eq!(
+        event_2.entry.get_id(),
+        &log_id,
+        "Received event 2 has wrong LogId."
+    );
+    assert!(
+        event_2.entry.get_msg() == msg_main || event_2.entry.get_msg() == msg_side,
+        "Received event 2 has wrong msg."
+    );
 
-    assert_ne!(event_1.entry.get_msg(), event_2.entry.get_msg(), "Both events have the same msg.");  
+    assert_ne!(
+        event_1.entry.get_msg(),
+        event_2.entry.get_msg(),
+        "Both events have the same msg."
+    );
 }
 
 #[test]
@@ -68,8 +111,8 @@ fn set_events_in_many_threads() {
 
     let mut recvs: Vec<Receiver<EventMsg>> = Vec::new();
     for i in 1..=THREAD_CNT {
-      let loop_id = get_log_id(0, 0, EventLevel::Error, i);
-      recvs.push(subscribe!(loop_id).unwrap());
+        let loop_id = get_log_id(0, 0, EventLevel::Error, i);
+        recvs.push(subscribe!(loop_id).unwrap());
     }
 
     set_event!(base_log_id, msg).finalize();
@@ -90,13 +133,27 @@ fn set_events_in_many_threads() {
     for i in 1..=THREAD_CNT {
         let log_id = get_log_id(0, 0, EventLevel::Error, i);
 
-        let event = recvs[(i-1) as usize].recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-        assert_eq!(event.entry.get_id(), &log_id, "Received event {} has wrong LogId.", i);
+        let event = recvs[(i - 1) as usize]
+            .recv_timeout(std::time::Duration::from_millis(10))
+            .unwrap();
+        assert_eq!(
+            event.entry.get_id(),
+            &log_id,
+            "Received event {} has wrong LogId.",
+            i
+        );
     }
 
     // Note: Starting at "2", because one rcv was already consumed in loop above
     for i in 2..=THREAD_CNT {
-      let event = recvs[0].recv_timeout(std::time::Duration::from_millis(10)).unwrap();
-      assert_eq!(event.entry.get_id(), &base_log_id, "Received event {} has wrong LogId.", i);
+        let event = recvs[0]
+            .recv_timeout(std::time::Duration::from_millis(10))
+            .unwrap();
+        assert_eq!(
+            event.entry.get_id(),
+            &base_log_id,
+            "Received event {} has wrong LogId.",
+            i
+        );
     }
 }
