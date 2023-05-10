@@ -139,23 +139,63 @@ pub fn subscribe_to_crates<T, L>(crate_logs: T) -> Option<Vec<Receiver<EventMsg>
 where 
   L: Iterator<Item = LogId>,
   T: Iterator<Item = (&'static str, L)> {
-    todo!();
+    let mut rcvs: Vec<Receiver<EventMsg>> = Vec::new();
+    for (crate_name, log_ids) in crate_logs {
+        rcvs.extend(subscribe_to_logs(log_ids, crate_name).unwrap_or_default());
+    }
+
+    if rcvs.is_empty() {
+      return None;
+    }
+    Some(rcvs)
 }
 
-pub fn receive_any(receiver: &[Receiver<EventMsg>], timeout: Option<std::time::Duration>) -> Option<EventMsg> {
+pub enum ReceiveKind {
+  Select,
+  SelectTimeout(std::time::Duration),
+  SelectDeadline(std::time::Instant),
+  Ready,
+  ReadyTimeout(std::time::Duration),
+  ReadyDeadline(std::time::Instant),
+}
+
+pub fn receive_any(receiver: &[Receiver<EventMsg>], kind: ReceiveKind) -> Option<EventMsg> {
     let mut select = Select::new();
     for rcv in receiver {
       select.recv(rcv);
     }
     
-    let op = match timeout {
-        Some(duration) => select.select_timeout(duration).ok()?,
-        None => select.select(),
-    };
+    match kind {
+        ReceiveKind::Select |
+        ReceiveKind::SelectTimeout(_) |
+        ReceiveKind::SelectDeadline(_) => {
+          let op = match kind {
+            ReceiveKind::Select => select.select(),
+            ReceiveKind::SelectTimeout(duration) => select.select_timeout(duration).ok()?,
+            ReceiveKind::SelectDeadline(instant) => select.select_deadline(instant).ok()?,
+            _ => {return None;}
+          };
+      
+          match receiver.get(op.index()) {
+              Some(rcv) => op.recv(rcv).ok(),
+              None => None,
+          }
+        },
+        ReceiveKind::Ready |
+        ReceiveKind::ReadyTimeout(_) |
+        ReceiveKind::ReadyDeadline(_) => {
+          let op = match kind {
+            ReceiveKind::Ready => select.ready(),
+            ReceiveKind::ReadyTimeout(duration) => select.ready_timeout(duration).ok()?,
+            ReceiveKind::ReadyDeadline(instant) => select.ready_deadline(instant).ok()?,
+            _ => {return None;}
+          };
 
-    match receiver.get(op.index()) {
-        Some(rcv) => op.recv(rcv).ok(),
-        None => None,
+          match receiver.get(op) {
+            Some(rcv) => rcv.try_recv().ok(),
+            None => None,
+          }
+        },
     }
 }
 
