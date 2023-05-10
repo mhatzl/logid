@@ -42,6 +42,10 @@ pub struct Entry {
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
     pub(crate) diagnostics: Vec<Diagnostic>,
+
+    /// List of payloads for this log-id entry
+    #[cfg(feature = "payloads")]
+    pub(crate) payloads: Vec<serde_json::value::Value>,
 }
 
 impl Entry {
@@ -73,6 +77,9 @@ impl Entry {
 
             #[cfg(feature = "diagnostics")]
             diagnostics: Vec::default(),
+
+            #[cfg(feature = "payloads")]
+            payloads: Vec::default(),
         }
     }
 
@@ -116,6 +123,10 @@ impl Entry {
     pub fn get_diagnostics(&self) -> &Vec<Diagnostic> {
         &self.diagnostics
     }
+
+    pub fn get_payloads(&self) -> &Vec<serde_json::value::Value> {
+        &self.payloads
+    }
 }
 
 impl PartialEq for Entry {
@@ -145,10 +156,15 @@ pub(crate) enum EntryKind {
     Info(String),
     Debug(String),
     Trace(String),
+
     #[cfg(feature = "causes")]
     Cause(Entry),
+
     #[cfg(feature = "diagnostics")]
     Diagnostic(Diagnostic),
+
+    #[cfg(feature = "payloads")]
+    Payload(serde_json::value::Value),
 }
 
 /// This function computes the hash for a [`LogIdEntry`].

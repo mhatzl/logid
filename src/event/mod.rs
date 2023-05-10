@@ -152,37 +152,38 @@ impl std::fmt::Debug for Event {
 }
 
 impl Event {
-    /// Returns the [`LogId`] of the [`MappedLogId`].
+    /// Returns the [`LogId`] of this log-id event
     pub fn id(&self) -> LogId {
         self.entry.id
     }
 
+    /// Returns the [`Entry`] of this log-id event
     pub fn entry(&self) -> &Entry {
         &self.entry
     }
 
-    /// Add an info message for this log-id
+    /// Add an info message to this log-id event
     pub fn add_info(mut self, msg: &str) -> Self {
         tracing::info!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Info(msg.to_owned()));
         self
     }
 
-    /// Add a debug message for this log-id
+    /// Add a debug message to this log-id event
     pub fn add_debug(mut self, msg: &str) -> Self {
         tracing::debug!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Debug(msg.to_owned()));
         self
     }
 
-    /// Add a trace message for this log-id
+    /// Add a trace message to this log-id event
     pub fn add_trace(mut self, msg: &str) -> Self {
         tracing::trace!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Trace(msg.to_owned()));
         self
     }
 
-    /// Add a log-id entry that caused this log-id
+    /// Add a log-id entry that caused this log-id event
     #[cfg(feature = "causes")]
     pub fn add_cause(mut self, entry: Entry) -> Self {
         tracing::info!("{}(cause): {}", self.entry.hash, entry);
@@ -190,11 +191,19 @@ impl Event {
         self
     }
 
-    /// Add diagnostics for this log-id
+    /// Add diagnostic info to this log-id event
     #[cfg(feature = "diagnostics")]
     pub fn add_diagnostic(mut self, diagnostic: Diagnostic) -> Self {
         tracing::trace!("{}(diag): {:?}", self.entry.hash, diagnostic);
         add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
+        self
+    }
+
+    /// Add a payload to this log-id event
+    #[cfg(feature = "payloads")]
+    pub fn add_payload(mut self, payload: serde_json::value::Value) -> Self {
+        tracing::trace!("{}(payload): {:?}", self.entry.hash, payload);
+        add_addon_to_entry(&mut self, EntryKind::Payload(payload));
         self
     }
 
@@ -218,9 +227,14 @@ fn add_addon_to_entry(id_event: &mut Event, kind: EntryKind) {
         EntryKind::Info(msg) => id_event.entry.infos.push(msg),
         EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
         EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
+
         #[cfg(feature = "causes")]
         EntryKind::Cause(entry) => id_event.entry.causes.push(entry),
+
         #[cfg(feature = "diagnostics")]
         EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
+
+        #[cfg(feature = "payloads")]
+        EntryKind::Payload(payload) => id_event.entry.payloads.push(payload),
     }
 }
