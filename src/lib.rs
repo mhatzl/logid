@@ -9,10 +9,10 @@
 //! **Usage:**
 //!
 //! ~~~
-//! use logid::{log_id::{LogId, EventLevel, get_log_id}, set_event};
+//! use logid::{log_id::{LogId, LogLevel, get_log_id}, set_event};
 //!
 //! enum CrateErrors {
-//!   SomeError = get_log_id(0, 0, EventLevel::Error, 0),
+//!   SomeError = get_log_id(0, 0, LogLevel::Error, 0),
 //! }
 //!
 //! fn my_func() -> Result<usize, LogId> {

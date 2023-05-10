@@ -1,4 +1,8 @@
-use crate::{log_id::{LogId, LogLevel}, publisher::PUBLISHER, event::entry::EntryKind};
+use crate::{
+    event::entry::EntryKind,
+    log_id::{LogId, LogLevel},
+    publisher::PUBLISHER,
+};
 
 use self::{entry::Entry, msg::EventMsg};
 
@@ -13,72 +17,59 @@ pub mod origin;
 
 /// Trait to use [`LogId`] for tracing.
 pub trait EventFns {
-  /// Set an event for a [`LogId`], and storing it inside the [`LogIdMap`] of the given crate name.
-  ///
-  /// # Arguments
-  ///
-  /// * `crate_name` ... Name of the crate to identify the [`LogIdMap`]
-  /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
-  /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
-  /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
-  fn set_event(
-      self,
-      crate_name: &'static str,
-      msg: &str,
-      filename: &str,
-      line_nr: u32,
-  ) -> Event;
+    /// Set an event for a [`LogId`], and storing it inside the [`LogIdMap`] of the given crate name.
+    ///
+    /// # Arguments
+    ///
+    /// * `crate_name` ... Name of the crate to identify the [`LogIdMap`]
+    /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
+    /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
+    /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
+    fn set_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32) -> Event;
 
-  /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
-  ///
-  /// # Arguments
-  ///
-  /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
-  /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
-  /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
-  fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event;
+    /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
+    /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
+    /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event;
 }
 
 /// Traces a [`Entry`] creation.
 fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Entry {
-  let id_entry = Entry::new(id, msg, filename, line_nr);
+    let id_entry = Entry::new(id, msg, filename, line_nr);
 
-  // Note: It is not possible to set `target` via parameter, because it requires `const`
-  // Same goes for `level` for the `event` macro => match and code duplication needed
-  match id_entry.level {
-      LogLevel::Error => tracing::error!("{}: {}", id, msg),
-      LogLevel::Warn => tracing::warn!("{}: {}", id, msg),
-      LogLevel::Info => tracing::info!("{}: {}", id, msg),
-      LogLevel::Debug => tracing::debug!("{}: {}", id, msg),
-  }
+    // Note: It is not possible to set `target` via parameter, because it requires `const`
+    // Same goes for `level` for the `event` macro => match and code duplication needed
+    match id_entry.level {
+        LogLevel::Error => tracing::error!("{}: {}", id, msg),
+        LogLevel::Warn => tracing::warn!("{}: {}", id, msg),
+        LogLevel::Info => tracing::info!("{}: {}", id, msg),
+        LogLevel::Debug => tracing::debug!("{}: {}", id, msg),
+    }
 
-  tracing::trace!("{}(origin): {}", id, String::from(&id_entry.origin));
+    tracing::trace!("{}(origin): {}", id, String::from(&id_entry.origin));
 
-  id_entry
+    id_entry
 }
 
 impl EventFns for LogId {
-  fn set_event(
-      self,
-      crate_name: &'static str,
-      msg: &str,
-      filename: &str,
-      line_nr: u32,
-  ) -> Event {
-      Event {
-          entry: create_entry(self, msg, filename, line_nr),
-          crate_name: Some(crate_name),
-      }
-  }
+    fn set_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32) -> Event {
+        Event {
+            entry: create_entry(self, msg, filename, line_nr),
+            crate_name: Some(crate_name),
+        }
+    }
 
-  fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event {
-      Event {
-          entry: create_entry(self, msg, filename, line_nr),
-          crate_name: None,
-      }
-  }
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event {
+        Event {
+            entry: create_entry(self, msg, filename, line_nr),
+            crate_name: None,
+        }
+    }
 }
-
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Default, Clone)]

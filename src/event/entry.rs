@@ -1,12 +1,14 @@
-use std::{hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
-use crate::log_id::{LogId, LogLevel, LogIdParts};
+use crate::log_id::{LogId, LogIdParts, LogLevel};
 
 use super::origin::Origin;
 
 #[cfg(feature = "diagnostics")]
 use super::diagnostic::Diagnostic;
-
 
 /// Structure to capture all messages set for a log-id.
 #[derive(Debug, Clone, Eq, Default)]
@@ -67,35 +69,29 @@ impl Hash for Entry {
 impl Entry {
     /// Create a new [`LogIdEntry`].
     pub(crate) fn new(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Self {
-      Entry {
-          hash: compute_hash(filename, line_nr),
-          id,
-          level: id.get_level(),
-          msg: msg.to_string(),
-          origin: Origin::new(filename, line_nr),
-          span: if let Some(span) = tracing::span::Span::current().metadata() {
-              span.name()
-          } else {
-              "event not in span"
-          },
-          infos: Vec::default(),
-          debugs: Vec::default(),
-          traces: Vec::default(),
-
-          #[cfg(feature = "causes")]
-          causes: Vec::default(),
-
-          #[cfg(feature = "diagnostics")]
-          diagnostics: Vec::default(),
-      }
-    }
-
-    pub(crate) fn shallow_new(hash: u64) -> Self {
         Entry {
-            hash,
-            ..Default::default()
+            hash: compute_hash(filename, line_nr),
+            id,
+            level: id.get_level(),
+            msg: msg.to_string(),
+            origin: Origin::new(filename, line_nr),
+            span: if let Some(span) = tracing::span::Span::current().metadata() {
+                span.name()
+            } else {
+                "event not in span"
+            },
+            infos: Vec::default(),
+            debugs: Vec::default(),
+            traces: Vec::default(),
+
+            #[cfg(feature = "causes")]
+            causes: Vec::default(),
+
+            #[cfg(feature = "diagnostics")]
+            diagnostics: Vec::default(),
         }
     }
+
     /// Get the log-id of this entry
     pub fn get_id(&self) -> &LogId {
         &self.id
@@ -128,14 +124,14 @@ impl Entry {
     pub fn get_span(&self) -> &str {
         self.span
     }
-    
+
     pub fn get_causes(&self) -> &Vec<String> {
         &self.causes
     }
-    
+
     pub fn get_diagnostics(&self) -> &Vec<Diagnostic> {
         &self.diagnostics
-  }
+    }
 }
 
 /// This function computes the hash for a [`LogIdEntry`].
@@ -151,10 +147,10 @@ impl Entry {
 /// **Note:** The hash function is not cryptographically secure,
 /// but that is ok since we only need the hash to identify the entry in a map.
 fn compute_hash(filename: &str, line_nr: u32) -> u64 {
-  let mut hasher = DefaultHasher::new();
-  hasher.write(filename.as_bytes());
-  hasher.write_u32(line_nr);
-  std::thread::current().id().hash(&mut hasher);
-  hasher.write_i64(chrono::Utc::now().timestamp_nanos());
-  hasher.finish()
+    let mut hasher = DefaultHasher::new();
+    hasher.write(filename.as_bytes());
+    hasher.write_u32(line_nr);
+    std::thread::current().id().hash(&mut hasher);
+    hasher.write_i64(chrono::Utc::now().timestamp_nanos());
+    hasher.finish()
 }

@@ -1,4 +1,3 @@
-
 /// Structure representing the origin of a log-id.
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct Origin {

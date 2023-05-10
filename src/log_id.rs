@@ -162,7 +162,7 @@ pub const fn get_log_id(main_grp: u8, sub_grp: u8, log_level: LogLevel, local_nr
 
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, LogLevel, LogIdParts};
+    use super::{get_log_id, LogIdParts, LogLevel};
 
     #[test]
     fn create_log_id_with_error() {

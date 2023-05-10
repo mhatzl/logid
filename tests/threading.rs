@@ -1,10 +1,10 @@
-use std::thread;
+use std::{sync::mpsc::Receiver, thread};
 
 use logid::{
+    event::msg::EventMsg,
     log_id::{get_log_id, LogLevel},
-    set_event, subscribe, publisher::{ReceiveKind, SyncReceiver}, event::msg::EventMsg,
+    set_event, subscribe,
 };
-use tokio::sync::watch;
 
 #[test]
 fn set_different_events_in_two_threads() {
@@ -13,8 +13,8 @@ fn set_different_events_in_two_threads() {
     let log_id_main = get_log_id(0, 0, LogLevel::Error, 2);
     let msg_main = "Set main thread message";
 
-    let mut recv_side = subscribe!(log_id_side).unwrap();
-    let mut recv_main = subscribe!(log_id_main).unwrap();
+    let recv_side = subscribe!(log_id_side).unwrap();
+    let recv_main = subscribe!(log_id_main).unwrap();
 
     let side_thread = thread::spawn(move || {
         set_event!(log_id_side, msg_side).finalize();
@@ -25,7 +25,7 @@ fn set_different_events_in_two_threads() {
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
     let event_side = recv_side
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_side.entry.get_id(),
@@ -39,7 +39,7 @@ fn set_different_events_in_two_threads() {
     );
 
     let event_main = recv_main
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_main.entry.get_id(),
@@ -59,7 +59,7 @@ fn set_same_logid_in_two_threads() {
     let msg_side = "Set side thread log message";
     let msg_main = "Set main thread message";
 
-    let mut recv = subscribe!(log_id).unwrap();
+    let recv = subscribe!(log_id).unwrap();
 
     let side_thread = thread::spawn(move || {
         set_event!(log_id, msg_side).finalize();
@@ -70,7 +70,7 @@ fn set_same_logid_in_two_threads() {
     assert!(side_thread.join().is_ok(), "Side thread panicked.");
 
     let event_1 = recv
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_1.entry.get_id(),
@@ -83,7 +83,7 @@ fn set_same_logid_in_two_threads() {
     );
 
     let event_2 = recv
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_2.entry.get_id(),
@@ -108,7 +108,7 @@ fn set_events_in_many_threads() {
     let base_log_id = get_log_id(0, 0, LogLevel::Error, 1);
     let msg = "Set log message";
 
-    let mut recvs: Vec<watch::Receiver<EventMsg>> = Vec::new();
+    let mut recvs: Vec<Receiver<EventMsg>> = Vec::new();
     for i in 1..=THREAD_CNT {
         let loop_id = get_log_id(0, 0, LogLevel::Error, i);
         recvs.push(subscribe!(loop_id).unwrap());
@@ -133,7 +133,7 @@ fn set_events_in_many_threads() {
         let log_id = get_log_id(0, 0, LogLevel::Error, i);
 
         let event = recvs[(i - 1) as usize]
-            .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+            .recv_timeout(std::time::Duration::from_millis(10))
             .unwrap();
         assert_eq!(
             event.entry.get_id(),
@@ -146,7 +146,7 @@ fn set_events_in_many_threads() {
     // Note: Starting at "2", because one rcv was already consumed in loop above
     for i in 2..=THREAD_CNT {
         let event = recvs[0]
-            .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+            .recv_timeout(std::time::Duration::from_millis(10))
             .unwrap();
         assert_eq!(
             event.entry.get_id(),

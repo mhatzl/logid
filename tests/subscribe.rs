@@ -1,8 +1,6 @@
 use logid::{
     log_id::{get_log_id, LogLevel},
-    logid,
-    publisher::{self, ReceiveKind, SyncReceiver},
-    set_event, subscribe, subscribe_to_logs,
+    logid, publisher, set_event, subscribe, subscribe_to_logs,
 };
 
 #[test]
@@ -10,11 +8,13 @@ fn subscribe_to_one_logid() {
     let log_id = get_log_id(0, 0, LogLevel::Error, 2);
     let msg = "Set first log message";
 
-    let mut recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
     set_event!(log_id, msg).finalize();
 
-    let event = recv.recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10))).unwrap();
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
     assert_eq!(
         event.crate_name,
         env!("CARGO_PKG_NAME"),
@@ -33,12 +33,12 @@ fn subscribe_macro() {
     let log_id = get_log_id(0, 0, LogLevel::Error, 2);
     let msg = "Set first log message";
 
-    let mut recv = subscribe!(log_id).unwrap();
+    let recv = subscribe!(log_id).unwrap();
 
     set_event!(log_id, msg).finalize();
 
     let event = recv
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event.crate_name,
@@ -61,12 +61,12 @@ enum TestLogId {
 fn subscribe_macro_with_logid_enum() {
     let msg = "Set first log message";
 
-    let mut recv = subscribe!(TestLogId::Id).unwrap();
+    let recv = subscribe!(TestLogId::Id).unwrap();
 
     set_event!(TestLogId::Id, msg).finalize();
 
     let event = recv
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event.crate_name,
@@ -88,14 +88,14 @@ fn two_log_ids_separate_receiver() {
     let log_id_2 = get_log_id(0, 0, LogLevel::Error, 3);
     let msg_2 = "Set second log message";
 
-    let mut recv_1 = subscribe!(log_id_1).unwrap();
-    let mut recv_2 = subscribe!(log_id_2).unwrap();
+    let recv_1 = subscribe!(log_id_1).unwrap();
+    let recv_2 = subscribe!(log_id_2).unwrap();
 
     set_event!(log_id_1, msg_1).finalize();
     set_event!(log_id_2, msg_2).finalize();
 
     let event_1 = recv_1
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_1.entry.get_id(),
@@ -109,7 +109,7 @@ fn two_log_ids_separate_receiver() {
     );
 
     let event_2 = recv_2
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_2.entry.get_id(),
@@ -128,13 +128,13 @@ fn one_log_id_separate_receiver() {
     let log_id = get_log_id(0, 0, LogLevel::Error, 2);
     let msg = "Set first log message";
 
-    let mut recv_1 = subscribe!(log_id).unwrap();
-    let mut recv_2 = subscribe!(log_id).unwrap();
+    let recv_1 = subscribe!(log_id).unwrap();
+    let recv_2 = subscribe!(log_id).unwrap();
 
     set_event!(log_id, msg).finalize();
 
     let event_1 = recv_1
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_1.entry.get_id(),
@@ -148,7 +148,7 @@ fn one_log_id_separate_receiver() {
     );
 
     let event_2 = recv_2
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_2.entry.get_id(),
@@ -169,7 +169,7 @@ fn subscribe_to_two_log_ids_at_once() {
     let log_id_2 = get_log_id(0, 0, LogLevel::Error, 3);
     let msg_2 = "Set second log message";
 
-    let mut recvs = publisher::subscribe_to_logs(
+    let recv = publisher::subscribe_to_logs(
         vec![log_id_1, log_id_2].iter().copied(),
         env!("CARGO_PKG_NAME"),
     )
@@ -178,8 +178,8 @@ fn subscribe_to_two_log_ids_at_once() {
     set_event!(log_id_1, msg_1).finalize();
     set_event!(log_id_2, msg_2).finalize();
 
-    let event_1 = recvs[0]
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+    let event_1 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_1.entry.get_id(),
@@ -192,8 +192,8 @@ fn subscribe_to_two_log_ids_at_once() {
         "Received event 1 has wrong msg."
     );
 
-    let event_2 = recvs[1]
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+    let event_2 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_2.entry.get_id(),
@@ -214,13 +214,13 @@ fn subscribe_to_two_log_ids_at_once_via_macro() {
     let log_id_2 = get_log_id(0, 0, LogLevel::Error, 3);
     let msg_2 = "Set second log message";
 
-    let mut recvs = subscribe_to_logs!(vec![log_id_1, log_id_2].iter()).unwrap();
+    let recv = subscribe_to_logs!(vec![log_id_1, log_id_2].iter()).unwrap();
 
     set_event!(log_id_1, msg_1).finalize();
     set_event!(log_id_2, msg_2).finalize();
 
-    let event_1 = recvs[0]
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+    let event_1 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_1.entry.get_id(),
@@ -233,8 +233,8 @@ fn subscribe_to_two_log_ids_at_once_via_macro() {
         "Received event 1 has wrong msg."
     );
 
-    let event_2 = recvs[1]
-        .recv(ReceiveKind::Timeout(std::time::Duration::from_millis(10)))
+    let event_2 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
         event_2.entry.get_id(),
