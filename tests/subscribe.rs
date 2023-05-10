@@ -182,13 +182,11 @@ fn subscribe_to_two_log_ids_at_once() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert!(
-        event_1.entry.get_id() == &log_id_1
-        || event_1.entry.get_id() == &log_id_2,
+        event_1.entry.get_id() == &log_id_1 || event_1.entry.get_id() == &log_id_2,
         "Received event 1 has wrong LogId."
     );
     assert!(
-        event_1.entry.get_msg() == msg_1
-        || event_1.entry.get_msg() == msg_2,
+        event_1.entry.get_msg() == msg_1 || event_1.entry.get_msg() == msg_2,
         "Received event 1 has wrong msg."
     );
 
@@ -196,16 +194,18 @@ fn subscribe_to_two_log_ids_at_once() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert!(
-        event_2.entry.get_id() == &log_id_1
-        || event_2.entry.get_id() == &log_id_2,
+        event_2.entry.get_id() == &log_id_1 || event_2.entry.get_id() == &log_id_2,
         "Received event 2 has wrong LogId."
     );
     assert!(
-        event_2.entry.get_msg() == msg_1
-        || event_2.entry.get_msg() == msg_2,
+        event_2.entry.get_msg() == msg_1 || event_2.entry.get_msg() == msg_2,
         "Received event 2 has wrong msg."
     );
-    assert_ne!(event_1.entry.get_id(), event_2.entry.get_id(), "Both events received the same id.");
+    assert_ne!(
+        event_1.entry.get_id(),
+        event_2.entry.get_id(),
+        "Both events received the same id."
+    );
 }
 
 #[test]
@@ -224,13 +224,11 @@ fn subscribe_to_two_log_ids_at_once_via_macro() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert!(
-        event_1.entry.get_id() == &log_id_1
-        || event_1.entry.get_id() == &log_id_2,
+        event_1.entry.get_id() == &log_id_1 || event_1.entry.get_id() == &log_id_2,
         "Received event 1 has wrong LogId."
     );
     assert!(
-        event_1.entry.get_msg() == msg_1
-        || event_1.entry.get_msg() == msg_2,
+        event_1.entry.get_msg() == msg_1 || event_1.entry.get_msg() == msg_2,
         "Received event 1 has wrong msg."
     );
 
@@ -238,16 +236,18 @@ fn subscribe_to_two_log_ids_at_once_via_macro() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert!(
-        event_2.entry.get_id() == &log_id_1
-        || event_2.entry.get_id() == &log_id_2,
+        event_2.entry.get_id() == &log_id_1 || event_2.entry.get_id() == &log_id_2,
         "Received event 2 has wrong LogId."
     );
     assert!(
-        event_2.entry.get_msg() == msg_1
-        || event_2.entry.get_msg() == msg_2,
+        event_2.entry.get_msg() == msg_1 || event_2.entry.get_msg() == msg_2,
         "Received event 2 has wrong msg."
     );
-    assert_ne!(event_1.entry.get_id(), event_2.entry.get_id(), "Both events received the same id.");
+    assert_ne!(
+        event_1.entry.get_id(),
+        event_2.entry.get_id(),
+        "Both events received the same id."
+    );
 }
 
 // #[test]

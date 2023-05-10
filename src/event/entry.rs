@@ -1,5 +1,6 @@
 use std::{
     collections::hash_map::DefaultHasher,
+    fmt::Display,
     hash::{Hash, Hasher},
 };
 
@@ -34,36 +35,13 @@ pub struct Entry {
     /// Name of the span that was current when the log-id event was set
     pub(crate) span: &'static str,
 
-    /// List of causes for this log-id entry
+    /// List of other log-id entries that caused this log-id entry
     #[cfg(feature = "causes")]
-    pub(crate) causes: Vec<String>,
+    pub(crate) causes: Vec<Entry>,
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
     pub(crate) diagnostics: Vec<Diagnostic>,
-}
-
-/// [`EntryKind`] defines the message kind to be added to a [`LogIdEntry`].
-pub(crate) enum EntryKind {
-    Info(String),
-    Debug(String),
-    Trace(String),
-    #[cfg(feature = "causes")]
-    Cause(String),
-    #[cfg(feature = "diagnostics")]
-    Diagnostic(Diagnostic),
-}
-
-impl PartialEq for Entry {
-    fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash
-    }
-}
-
-impl Hash for Entry {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
-    }
 }
 
 impl Entry {
@@ -131,13 +109,46 @@ impl Entry {
         self.span
     }
 
-    pub fn get_causes(&self) -> &Vec<String> {
+    pub fn get_causes(&self) -> &Vec<Entry> {
         &self.causes
     }
 
     pub fn get_diagnostics(&self) -> &Vec<Diagnostic> {
         &self.diagnostics
     }
+}
+
+impl PartialEq for Entry {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash == other.hash
+    }
+}
+
+impl Hash for Entry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash.hash(state);
+    }
+}
+
+impl Display for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LogId-Entry")
+            .field("id", &self.id)
+            .field("origin", &self.origin)
+            .field("hash", &self.hash)
+            .finish()
+    }
+}
+
+/// [`EntryKind`] defines the message kind to be added to a [`LogIdEntry`].
+pub(crate) enum EntryKind {
+    Info(String),
+    Debug(String),
+    Trace(String),
+    #[cfg(feature = "causes")]
+    Cause(Entry),
+    #[cfg(feature = "diagnostics")]
+    Diagnostic(Diagnostic),
 }
 
 /// This function computes the hash for a [`LogIdEntry`].

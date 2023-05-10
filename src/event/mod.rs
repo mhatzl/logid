@@ -175,11 +175,11 @@ impl Event {
         self
     }
 
-    /// Add a message describing the cause for this log-id
+    /// Add a log-id entry that caused this log-id
     #[cfg(feature = "causes")]
-    pub fn add_cause(mut self, msg: &str) -> Self {
-        tracing::info!("{}(cause): {}", self.entry.id, msg);
-        add_addon_to_entry(&mut self, EntryKind::Cause(msg.to_owned()));
+    pub fn add_cause(mut self, entry: Entry) -> Self {
+        tracing::info!("{}(cause): {}", self.entry.id, entry);
+        add_addon_to_entry(&mut self, EntryKind::Cause(entry));
         self
     }
 
@@ -212,7 +212,7 @@ fn add_addon_to_entry(id_event: &mut Event, kind: EntryKind) {
         EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
         EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
         #[cfg(feature = "causes")]
-        EntryKind::Cause(msg) => id_event.entry.causes.push(msg),
+        EntryKind::Cause(entry) => id_event.entry.causes.push(entry),
         #[cfg(feature = "diagnostics")]
         EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
     }

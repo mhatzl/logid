@@ -42,56 +42,50 @@ fn capture_single_logid() {
     );
 }
 
-// #[cfg(feature = "causes")]
-// #[test]
-// fn capture_single_logid_with_cause() {
-//     drain_map!();
+#[cfg(feature = "causes")]
+#[test]
+fn capture_single_logid_with_cause() {
+    let cause_log_id = get_log_id(0, 0, LogLevel::Warn, 1);
+    let cause_msg = "Cause log message";
+    let log_id = get_log_id(0, 0, LogLevel::Error, 2);
+    let msg = "My log message";
 
-//     let log_id = get_log_id(0, 0, EventLevel::Warn, 1);
-//     let msg = "Set first log message";
-//     let cause = "Something caused this log-id";
-//     let line = line!() + 1;
-//     let event = set_event!(log_id, msg).add_cause(cause);
-//     event.clone().finalize();
+    let recv = publisher::subscribe_to_logs(
+        vec![cause_log_id, log_id].iter().copied(),
+        env!("CARGO_PKG_NAME"),
+    )
+    .unwrap();
 
-//     let map = delayed_map_drain();
+    set_event!(cause_log_id, cause_msg).finalize();
 
-//     assert_eq!(map.len(), 1, "More than one or no event captured!");
-//     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+    let cause_event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     let entries = map.get(&log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         1,
-//         "More than one or no entry for the same log-id"
-//     );
+    set_event!(log_id, msg)
+        .add_cause(cause_event.entry)
+        .finalize();
 
-//     let entry = entries.get_entry(&event).unwrap();
-//     assert_eq!(
-//         *entry.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_level(),
-//         EventLevel::Warn,
-//         "Set and stored event levels are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_msg(),
-//         msg,
-//         "Set and stored messages are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_origin(),
-//         Origin::new(file!(), line),
-//         "Set and stored origins are not equal"
-//     );
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     assert_eq!(entry.causes.len(), 1, "More than one or no cause was set");
-//     let act_cause = entry.causes.last().unwrap();
-//     assert_eq!(act_cause, cause, "Set and stored messages are not equal");
-// }
+    assert_eq!(
+        event.entry.get_id(),
+        &log_id,
+        "Set and received log-ids are not equal"
+    );
+    assert_eq!(
+        event.entry.get_causes().get(0).unwrap().get_id(),
+        &cause_log_id,
+        "Set and received causing log-ids are not equal"
+    );
+    assert_eq!(
+        event.entry.get_causes().get(0).unwrap().get_msg(),
+        &cause_msg,
+        "Set and received causing msgs are not equal"
+    );
+}
 
 #[test]
 fn capture_single_logid_with_info() {
@@ -219,7 +213,11 @@ fn single_logid_without_capture() {
     let result = recv.recv_timeout(std::time::Duration::from_millis(10));
 
     if let Ok(recv_event) = result {
-        assert_ne!(event.entry().get_origin(), recv_event.entry.get_origin(), "Silent event was captured");
+        assert_ne!(
+            event.entry().get_origin(),
+            recv_event.entry.get_origin(),
+            "Silent event was captured"
+        );
     }
 }
 
