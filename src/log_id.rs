@@ -162,7 +162,7 @@ pub const fn get_log_id(main_grp: u8, sub_grp: u8, log_level: LogLevel, local_nr
 
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, LogIdParts, LogLevel};
+    use super::{get_log_id, LogIdParts, LogLevel, LogId};
 
     #[test]
     fn create_log_id_with_error() {
@@ -285,5 +285,39 @@ mod tests {
         let _log_id = get_log_id(0, 0, LogLevel::Debug, 64);
 
         unreachable!("Should have panicked");
+    }
+
+    #[derive(PartialEq, Eq, Debug, Default)]
+    enum LogIdEnum {
+        #[default]
+        First = get_log_id(0, 0, LogLevel::Debug, 1),
+        Second = get_log_id(0, 0, LogLevel::Debug, 2),
+        Third = get_log_id(0, 0, LogLevel::Debug, 3),
+    }
+
+    impl From<LogId> for LogIdEnum {
+        fn from(value: LogId) -> Self {
+            match value {
+                v if v == logid!(LogIdEnum::First) => LogIdEnum::First,
+                v if v == logid!(LogIdEnum::Second) => LogIdEnum::Second,
+                v if v == logid!(LogIdEnum::Third) => LogIdEnum::Third,
+                _ => Self::default(),
+            }
+        }
+    }
+
+    #[test]
+    fn enum_roundtrip_conversion() {
+        let first_logid = logid!(LogIdEnum::First);
+        let second_logid = logid!(LogIdEnum::Second);
+        let third_logid = logid!(LogIdEnum::Third);
+
+        assert_eq!(LogIdEnum::from(first_logid), LogIdEnum::First, "Wrong roundtrip conversion to first enum.");
+        assert_eq!(LogIdEnum::from(second_logid), LogIdEnum::Second, "Wrong roundtrip conversion to second enum.");
+        assert_eq!(LogIdEnum::from(third_logid), LogIdEnum::Third, "Wrong roundtrip conversion to third enum.");
+
+        assert_eq!(std::convert::Into::<LogIdEnum>::into(first_logid), LogIdEnum::First, "Wrong conversion to first enum.");
+        assert_eq!(std::convert::Into::<LogIdEnum>::into(second_logid), LogIdEnum::Second, "Wrong conversion to second enum.");
+        assert_eq!(std::convert::Into::<LogIdEnum>::into(third_logid), LogIdEnum::Third, "Wrong conversion to third enum.");
     }
 }
