@@ -54,13 +54,17 @@ fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32, module_path:
     // Note: It is not possible to set `target` via parameter, because it requires `const`
     // Same goes for `level` for the `event` macro => match and code duplication needed
     match id_entry.level {
-        LogLevel::Error => tracing::error!("{}: {}", id, msg),
-        LogLevel::Warn => tracing::warn!("{}: {}", id, msg),
-        LogLevel::Info => tracing::info!("{}: {}", id, msg),
-        LogLevel::Debug => tracing::debug!("{}: {}", id, msg),
+        LogLevel::Error => tracing::error!("{}(id={}): {}", id_entry.hash, id, msg),
+        LogLevel::Warn => tracing::warn!("{}(id={}): {}", id_entry.hash, id, msg),
+        LogLevel::Info => tracing::info!("{}(id={}): {}", id_entry.hash, id, msg),
+        LogLevel::Debug => tracing::debug!("{}(id={}): {}", id_entry.hash, id, msg),
     }
 
-    tracing::trace!("{}(origin): {}", id, String::from(&id_entry.origin));
+    tracing::trace!(
+        "{}(origin): {}",
+        id_entry.hash,
+        String::from(&id_entry.origin)
+    );
 
     id_entry
 }
@@ -122,24 +126,29 @@ impl Drop for Event {
         if self.crate_name.is_none() {
             return;
         }
-        let id = self.entry.id;
+        let hash = self.entry.hash;
         let crate_name = self.crate_name.unwrap();
 
         if let Err(err) = PUBLISHER.capturer.send(EventMsg {
             crate_name,
             entry: std::mem::take(&mut self.entry),
         }) {
-            tracing::error!("{}(send): {}", id, "Failed sending log-id to central map.");
-            tracing::debug!("{}(send-cause): {}", id, err);
+            tracing::error!(
+                "{}(send): {}",
+                hash,
+                "Failed sending log-id to central map."
+            );
+            tracing::debug!("{}(send-cause): {}", hash, err);
         }
     }
 }
 
 impl std::fmt::Debug for Event {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LogIdEvent")
+        f.debug_struct("LogId-Event")
             .field("id", &self.entry.id)
             .field("origin", &self.entry.origin)
+            .field("hash", &self.entry.hash)
             .finish()
     }
 }
@@ -156,21 +165,21 @@ impl Event {
 
     /// Add an info message for this log-id
     pub fn add_info(mut self, msg: &str) -> Self {
-        tracing::info!("{}(addon): {}", self.entry.id, msg);
+        tracing::info!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Info(msg.to_owned()));
         self
     }
 
     /// Add a debug message for this log-id
     pub fn add_debug(mut self, msg: &str) -> Self {
-        tracing::debug!("{}(addon): {}", self.entry.id, msg);
+        tracing::debug!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Debug(msg.to_owned()));
         self
     }
 
     /// Add a trace message for this log-id
     pub fn add_trace(mut self, msg: &str) -> Self {
-        tracing::trace!("{}(addon): {}", self.entry.id, msg);
+        tracing::trace!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Trace(msg.to_owned()));
         self
     }
@@ -178,7 +187,7 @@ impl Event {
     /// Add a log-id entry that caused this log-id
     #[cfg(feature = "causes")]
     pub fn add_cause(mut self, entry: Entry) -> Self {
-        tracing::info!("{}(cause): {}", self.entry.id, entry);
+        tracing::info!("{}(cause): {}", self.entry.hash, entry);
         add_addon_to_entry(&mut self, EntryKind::Cause(entry));
         self
     }
@@ -186,7 +195,7 @@ impl Event {
     /// Add diagnostics for this log-id
     #[cfg(feature = "diagnostics")]
     pub fn add_diagnostic(mut self, diagnostic: Diagnostic) -> Self {
-        tracing::trace!("{}(diag): {:?}", self.entry.id, diagnostic);
+        tracing::trace!("{}(diag): {:?}", self.entry.hash, diagnostic);
         add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
         self
     }
