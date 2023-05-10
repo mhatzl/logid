@@ -211,7 +211,9 @@ fn add_addon_to_entry(id_event: &mut Event, kind: EntryKind) {
         EntryKind::Info(msg) => id_event.entry.infos.push(msg),
         EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
         EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
+        #[cfg(feature = "causes")]
         EntryKind::Cause(msg) => id_event.entry.causes.push(msg),
+        #[cfg(feature = "diagnostics")]
         EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
     }
 }
