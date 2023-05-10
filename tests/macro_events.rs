@@ -109,30 +109,6 @@
 //     assert_eq!(*entry.get_id(), log_id, "ID of log_id not set correctly");
 // }
 
-// #[test]
-// fn global_entries_accessed() {
-//     drain_map!();
-
-//     let log_id = get_log_id(0, 0, EventLevel::Warn, 2);
-//     let msg = "Set first log message";
-
-//     let log_id = set_event!(log_id, msg).finalize();
-
-//     let map = delayed_map_drain();
-//     let entries = map.get(&log_id).unwrap();
-//     let entry = entries.iter().last().unwrap();
-//     assert_eq!(
-//         *entry.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_level(),
-//         EventLevel::Warn,
-//         "Set and stored event levels are not equal"
-//     );
-// }
-
 // enum TestLogId {
 //     Id = get_log_id(0, 0, EventLevel::Error, 2),
 // }
