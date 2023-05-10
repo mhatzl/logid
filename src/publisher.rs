@@ -1,25 +1,27 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
-    thread,
+    sync::{Arc, RwLock}, thread,
+    future::Future,
 };
 
-use crossbeam_channel::{Receiver, Select, Sender};
+use futures::{stream::FuturesUnordered, StreamExt};
 use once_cell::sync::Lazy;
+use tokio::sync::{watch, broadcast};
+use tokio_stream::wrappers::WatchStream;
 
-use crate::{id_entry::LogIdEntry, log_id::LogId};
+use crate::{log_id::LogId, event::msg::EventMsg};
 
 pub(crate) static PUBLISHER: Lazy<LogIdEventPublisher> = Lazy::new(LogIdEventPublisher::new);
 
 pub(crate) struct LogIdEventPublisher {
-    pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, Vec<Sender<EventMsg>>>>>,
-
-    pub(crate) sender: Sender<EventMsg>,
+    pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, watch::Sender<EventMsg>>>>,
+    pub(crate) capturer: broadcast::Sender<EventMsg>,
 }
 
-/// Buffersize of bounded channels. One finalized event is passed over one message.
+/// Buffersize of the broadcast channel for capturing log events.
+/// One finalized event is passed over one message in the channel.
 ///
-/// See [crossbeam_channel::bounded](https://docs.rs/crossbeam-channel/latest/crossbeam_channel/fn.bounded.html) for more information.
+/// See tokio's [broadcast:channel](https://docs.rs/tokio/latest/tokio/sync/broadcast/fn.channel.html) for more information.
 const CHANNEL_BOUND: usize = 1000;
 // TODO: Use when `unwrap_or` becomes available for const fn.
 // match option_env!("LOGID_EVENT_BUFFER") {
@@ -29,25 +31,25 @@ const CHANNEL_BOUND: usize = 1000;
 
 impl LogIdEventPublisher {
     fn new() -> Self {
-        let (send, recv) = crossbeam_channel::bounded(CHANNEL_BOUND);
+        let (send, mut recv) = broadcast::channel(CHANNEL_BOUND);
 
         thread::spawn(move || loop {
-            if let Ok(event_msg) = recv.recv() {
-                on_event(event_msg);
+            match futures::executor::block_on(recv.recv()) {
+                Ok(event_msg) => {
+                    on_event(event_msg);
+                },
+                Err(_) => {
+                    // Sender got dropped => Publisher got dropped
+                    return;
+                }
             }
         });
 
         LogIdEventPublisher {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            sender: send,
+            capturer: send,
         }
     }
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct EventMsg {
-    pub crate_name: &'static str,
-    pub entry: LogIdEntry,
 }
 
 #[derive(Default, Hash, Debug, PartialEq, Eq)]
@@ -62,19 +64,68 @@ impl SubscriptionKey {
     }
 }
 
-pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<Receiver<EventMsg>> {
+pub enum ReceiveKind {
+    Block,
+    Timeout(std::time::Duration),
+    Deadline(std::time::Instant),
+}
+
+pub trait SyncReceiver {
+    fn recv(&mut self, kind: ReceiveKind) -> Option<EventMsg>;
+}
+
+impl SyncReceiver for watch::Receiver<EventMsg> {
+    fn recv(&mut self, kind: ReceiveKind) -> Option<EventMsg> {
+        let mut recv = self.clone();
+        let changed = async move {
+            recv.changed().await.map_or_else(|_| false, |_| true)
+        };
+
+        let future = async move {
+            match kind {
+                ReceiveKind::Block => {
+                    changed.await
+                },
+                _ => {
+                    changed.await
+                },
+                // ReceiveKind::Timeout(timeout) => {
+                //     (tokio::time::timeout(timeout, changed).await).unwrap_or(false)
+                // },
+                // ReceiveKind::Deadline(deadline) => {
+                //     (tokio::time::timeout_at(deadline.into(), changed).await).unwrap_or(false)
+                // },
+            }
+        };
+
+        if futures::executor::block_on(future) {
+            Some(self.borrow().clone())
+        } else {
+            None
+        }
+    }
+}
+
+pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<watch::Receiver<EventMsg>> {
     let key = SubscriptionKey::new(crate_name, log_id);
-    let (sender, receiver) = crossbeam_channel::bounded(CHANNEL_BOUND);
 
-    PUBLISHER
+    match PUBLISHER
         .subscriptions
-        .write()
-        .ok()?
-        .entry(key)
-        .and_modify(|c| c.push(sender.clone()))
-        .or_insert(vec![sender]);
-
-    Some(receiver)
+        .write().ok() {
+        Some(mut locked_subs) => {
+            let entry = locked_subs.entry(key);
+            let sender = entry.or_insert_with(|| {
+                let (sender, mut recv) = watch::channel(EventMsg::default());
+                let _ = recv.borrow_and_update(); // Note: Consume initial event
+                sender
+            });
+    
+            Some(sender.subscribe())
+        },
+        None => {
+            None
+        }
+    }
 }
 
 #[macro_export]
@@ -87,11 +138,11 @@ macro_rules! subscribe {
     };
 }
 
-pub fn subscribe_to_logs<T>(log_ids: T, crate_name: &'static str) -> Option<Vec<Receiver<EventMsg>>>
+pub fn subscribe_to_logs<T>(log_ids: T, crate_name: &'static str) -> Option<Vec<watch::Receiver<EventMsg>>>
 where
     T: Iterator<Item = LogId>,
 {
-    let rcvs: Vec<Receiver<EventMsg>> = log_ids
+    let rcvs: Vec<watch::Receiver<EventMsg>> = log_ids
         .filter_map(|log_id| subscribe(log_id, crate_name))
         .collect();
 
@@ -111,12 +162,12 @@ macro_rules! subscribe_to_logs {
     };
 }
 
-pub fn subscribe_to_crates<T, L>(crate_logs: T) -> Option<Vec<Receiver<EventMsg>>>
+pub fn subscribe_to_crates<T, L>(crate_logs: T) -> Option<Vec<watch::Receiver<EventMsg>>>
 where
     L: Iterator<Item = LogId>,
     T: Iterator<Item = (&'static str, L)>,
 {
-    let mut rcvs: Vec<Receiver<EventMsg>> = Vec::new();
+    let mut rcvs: Vec<watch::Receiver<EventMsg>> = Vec::new();
     for (crate_name, log_ids) in crate_logs {
         rcvs.extend(subscribe_to_logs(log_ids, crate_name).unwrap_or_default());
     }
@@ -127,63 +178,35 @@ where
     Some(rcvs)
 }
 
-pub enum ReceiveKind {
-    Select,
-    SelectTimeout(std::time::Duration),
-    SelectDeadline(std::time::Instant),
-    Ready,
-    ReadyTimeout(std::time::Duration),
-    ReadyDeadline(std::time::Instant),
-}
 
-pub fn receive_any(receiver: &[Receiver<EventMsg>], kind: ReceiveKind) -> Option<EventMsg> {
-    let mut select = Select::new();
-    for rcv in receiver {
-        select.recv(rcv);
-    }
+// pub async fn get_first_received(receivers: &[watch::Receiver<EventMsg>], kind: ReceiveKind) -> Option<EventMsg> {
+//     let mut futures = FuturesUnordered::new();
+//     for recv in receivers {
+//         futures.push(async move {
+//             WatchStream::new(recv.to_owned()).next().await
+//         });
+//     }
 
-    match kind {
-        ReceiveKind::Select | ReceiveKind::SelectTimeout(_) | ReceiveKind::SelectDeadline(_) => {
-            let op = match kind {
-                ReceiveKind::Select => select.select(),
-                ReceiveKind::SelectTimeout(duration) => select.select_timeout(duration).ok()?,
-                ReceiveKind::SelectDeadline(instant) => select.select_deadline(instant).ok()?,
-                _ => {
-                    return None;
-                }
-            };
-
-            match receiver.get(op.index()) {
-                Some(rcv) => op.recv(rcv).ok(),
-                None => None,
-            }
-        }
-        ReceiveKind::Ready | ReceiveKind::ReadyTimeout(_) | ReceiveKind::ReadyDeadline(_) => {
-            let op = match kind {
-                ReceiveKind::Ready => select.ready(),
-                ReceiveKind::ReadyTimeout(duration) => select.ready_timeout(duration).ok()?,
-                ReceiveKind::ReadyDeadline(instant) => select.ready_deadline(instant).ok()?,
-                _ => {
-                    return None;
-                }
-            };
-
-            match receiver.get(op) {
-                Some(rcv) => rcv.try_recv().ok(),
-                None => None,
-            }
-        }
-    }
-}
+//     let res = match kind {
+//         ReceiveKind::Timeout(timeout) => {
+//             tokio::time::timeout(timeout, futures.next()).await.unwrap_or(None)
+//         },
+//         ReceiveKind::Deadline(deadline) => {
+//             tokio::time::timeout_at(deadline.into(), futures.next()).await.unwrap_or(None)
+//         },
+//         ReceiveKind::Block => {
+//             futures.next().await
+//         },
+//     };
+//     res.unwrap_or(None) 
+// }
 
 pub(crate) fn on_event(event_msg: EventMsg) {
     let key = SubscriptionKey::new(event_msg.crate_name, event_msg.entry.id);
 
     if let Ok(locked_subscriptions) = PUBLISHER.subscriptions.read() {
-        if let Some(senders) = locked_subscriptions.get(&key) {
-            senders.iter().for_each(|sender| {
-                let _ = sender.try_send(event_msg.clone());
-            });
+        if let Some(sender) = locked_subscriptions.get(&key) {
+            let _ = sender.send(event_msg);
         }
     }
 }

@@ -30,9 +30,9 @@ macro_rules! logids {
 /// Represents an invalid log-id
 pub const INVALID_LOG_ID: LogId = 0;
 
-/// Event level a log-id may represent.
+/// Log level a log-id may represent.
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
-pub enum EventLevel {
+pub enum LogLevel {
     /// Log-id debug kind
     #[default]
     Debug = 0,
@@ -44,18 +44,18 @@ pub enum EventLevel {
     Error = 3,
 }
 
-impl From<&tracing::Level> for EventLevel {
+impl From<&tracing::Level> for LogLevel {
     /// Converts tracing::Level to EventLevel.
     /// `DEBUG` and `TRACE` are both converted to `EventLevel::Debug`.
     fn from(level: &tracing::Level) -> Self {
         if level == &tracing::Level::ERROR {
-            EventLevel::Error
+            LogLevel::Error
         } else if level == &tracing::Level::WARN {
-            EventLevel::Warn
+            LogLevel::Warn
         } else if level == &tracing::Level::INFO {
-            EventLevel::Info
+            LogLevel::Info
         } else {
-            EventLevel::Debug
+            LogLevel::Debug
         }
     }
 }
@@ -67,27 +67,27 @@ pub trait LogIdParts {
     /// Get the sub group of this log-id
     fn get_sub_grp(self) -> u8;
     /// Get the [`EventLevel`] of this log-id
-    fn get_level(self) -> EventLevel;
+    fn get_level(self) -> LogLevel;
     /// Get the local number of this log-id
     fn get_local_nr(self) -> u8;
 }
 
 impl LogIdParts for LogId {
-    fn get_level(self) -> EventLevel {
-        // get EventLevel bits
-        let level = (self >> EVENT_LEVEL_SHIFT) & 3;
+    fn get_level(self) -> LogLevel {
+        // get LogLevel bits
+        let level = (self >> LOG_LEVEL_SHIFT) & 3;
 
-        if level == (EventLevel::Error as isize) {
-            EventLevel::Error
-        } else if level == (EventLevel::Warn as isize) {
-            EventLevel::Warn
-        } else if level == (EventLevel::Info as isize) {
-            EventLevel::Info
-        } else if level == (EventLevel::Debug as isize) {
-            EventLevel::Debug
+        if level == (LogLevel::Error as isize) {
+            LogLevel::Error
+        } else if level == (LogLevel::Warn as isize) {
+            LogLevel::Warn
+        } else if level == (LogLevel::Info as isize) {
+            LogLevel::Info
+        } else if level == (LogLevel::Debug as isize) {
+            LogLevel::Debug
         } else {
             tracing::trace!("Invalid event level={} for id={}", level, self);
-            EventLevel::Error
+            LogLevel::Error
         }
     }
 
@@ -114,8 +114,8 @@ const LOG_ID_BIT_RANGE: i16 = 16;
 const MAIN_GRP_SHIFT: i16 = 12;
 /// Bit shift in the log-id to place the sub group value
 const SUB_GRP_SHIFT: i16 = 8;
-/// Bit shift in the log-id to place the [`EventLevel`] value
-const EVENT_LEVEL_SHIFT: i16 = 6;
+/// Bit shift in the log-id to place the [`LogLevel`] value
+const LOG_LEVEL_SHIFT: i16 = 6;
 
 /// Returns a 16-bit log-id that is used to identify a log-id message across a project.
 /// The log-id is a unique unsigned integer value that is identified by bit shifting given group numbers and event level.
@@ -123,61 +123,61 @@ const EVENT_LEVEL_SHIFT: i16 = 6;
 ///
 /// The log-id bits are represented as follows:
 ///
-/// `16-13 bit = main group | 12-9 bit = sub group | 8-7 bit = event level | remaining 6 bit = local number`
+/// `16-13 bit = main group | 12-9 bit = sub group | 8-7 bit = log level | remaining 6 bit = local number`
 ///
 /// # Arguments
 ///
-/// * `main_grp` - main group the log-id is assigned to (possible range: 0 .. 15)
-/// * `sub_grp` - sub group the log-id is assigned to (possible range: 0 .. 15)
-/// * `log_kind` - the ['EventLevel'] of the log-id
-/// * `local_nr` - the local number of the log-id (possible range: 0 .. 63)
+/// * `main_grp` ... Main group the log-id is assigned to (possible range: 0 .. 15)
+/// * `sub_grp` ... Sub group the log-id is assigned to (possible range: 0 .. 15)
+/// * `log_level` ... The ['LogLevel'] of the log-id
+/// * `local_nr` ... The local number of the log-id (possible range: 0 .. 63)
 ///
 /// # Example
 ///
 /// ~~~
-/// use logid::log_id::{get_log_id, EventLevel};
+/// use logid::log_id::{get_log_id, LogLevel};
 ///
-/// assert_eq!(get_log_id(0, 0, EventLevel::Debug, 1), 1);
-/// assert_eq!(get_log_id(1, 0, EventLevel::Error, 1), 4289);
-/// assert_eq!(get_log_id(15, 15, EventLevel::Error, 63), 65535);
+/// assert_eq!(get_log_id(0, 0, LogLevel::Debug, 1), 1);
+/// assert_eq!(get_log_id(1, 0, LogLevel::Error, 1), 4289);
+/// assert_eq!(get_log_id(15, 15, LogLevel::Error, 63), 65535);
 /// ~~~
-pub const fn get_log_id(main_grp: u8, sub_grp: u8, event_level: EventLevel, local_nr: u8) -> LogId {
-    let event_level_number: u16 = event_level as u16;
+pub const fn get_log_id(main_grp: u8, sub_grp: u8, log_level: LogLevel, local_nr: u8) -> LogId {
+    let log_level_number: u16 = log_level as u16;
 
-    if (main_grp == 0) && (sub_grp == 0) && (event_level_number == 0) && (local_nr == 0) {
+    if (main_grp == 0) && (sub_grp == 0) && (log_level_number == 0) && (local_nr == 0) {
         panic!("Log-id `0` is not allowed!");
     } else if main_grp >= (1 << (LOG_ID_BIT_RANGE - MAIN_GRP_SHIFT)) {
         panic!("Given main group is too big for a valid log-id.");
     } else if sub_grp >= (1 << (MAIN_GRP_SHIFT - SUB_GRP_SHIFT)) {
         panic!("Given sub group is too big for a valid log-id.");
-    } else if local_nr >= (1 << EVENT_LEVEL_SHIFT) {
+    } else if local_nr >= (1 << LOG_LEVEL_SHIFT) {
         panic!("Given local number is too big for a valid log-id.");
     }
 
     (((main_grp as u16) << MAIN_GRP_SHIFT)
         + ((sub_grp as u16) << SUB_GRP_SHIFT)
-        + (event_level_number << EVENT_LEVEL_SHIFT)
+        + (log_level_number << LOG_LEVEL_SHIFT)
         + (local_nr as u16)) as LogId
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, EventLevel, LogIdParts};
+    use super::{get_log_id, LogLevel, LogIdParts};
 
     #[test]
     fn create_log_id_with_error() {
-        let log_id = get_log_id(0, 0, EventLevel::Error, 0);
+        let log_id = get_log_id(0, 0, LogLevel::Error, 0);
 
         assert_eq!(
             log_id.get_level(),
-            EventLevel::Error,
+            LogLevel::Error,
             "Log-id levels are not equal"
         );
     }
 
     #[test]
     fn main_set_1() {
-        let log_id = get_log_id(1, 0, EventLevel::Debug, 0);
+        let log_id = get_log_id(1, 0, LogLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b0001000000000000,
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn main_set_15() {
-        let log_id = get_log_id(15, 0, EventLevel::Debug, 0);
+        let log_id = get_log_id(15, 0, LogLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b1111000000000000,
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn sub_set_4() {
-        let log_id = get_log_id(0, 4, EventLevel::Debug, 0);
+        let log_id = get_log_id(0, 4, LogLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b0000010000000000,
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn sub_set_15() {
-        let log_id = get_log_id(0, 15, EventLevel::Debug, 0);
+        let log_id = get_log_id(0, 15, LogLevel::Debug, 0);
 
         assert_eq!(
             log_id, 0b0000111100000000,
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn local_set_3() {
-        let log_id = get_log_id(0, 0, EventLevel::Debug, 3);
+        let log_id = get_log_id(0, 0, LogLevel::Debug, 3);
 
         assert_eq!(
             log_id, 0b0000000000000011,
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn local_set_63() {
-        let log_id = get_log_id(0, 0, EventLevel::Debug, 63);
+        let log_id = get_log_id(0, 0, LogLevel::Debug, 63);
 
         assert_eq!(
             log_id, 0b0000000000111111,
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn level_set_warning() {
-        let log_id = get_log_id(0, 0, EventLevel::Warn, 0);
+        let log_id = get_log_id(0, 0, LogLevel::Warn, 0);
 
         assert_eq!(
             log_id, 0b0000000010000000,
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Log-id `0` is not allowed!")]
     fn invalid_log_id_set() {
-        let _log_id = get_log_id(0, 0, EventLevel::Debug, 0);
+        let _log_id = get_log_id(0, 0, LogLevel::Debug, 0);
 
         unreachable!("Should have panicked");
     }
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Given main group is too big for a valid log-id.")]
     fn main_out_of_bounds() {
-        let _log_id = get_log_id(16, 0, EventLevel::Debug, 1);
+        let _log_id = get_log_id(16, 0, LogLevel::Debug, 1);
 
         unreachable!("Should have panicked");
     }
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Given sub group is too big for a valid log-id.")]
     fn sub_out_of_bounds() {
-        let _log_id = get_log_id(0, 16, EventLevel::Debug, 1);
+        let _log_id = get_log_id(0, 16, LogLevel::Debug, 1);
 
         unreachable!("Should have panicked");
     }
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Given local number is too big for a valid log-id.")]
     fn local_nr_out_of_bounds() {
-        let _log_id = get_log_id(0, 0, EventLevel::Debug, 64);
+        let _log_id = get_log_id(0, 0, LogLevel::Debug, 64);
 
         unreachable!("Should have panicked");
     }

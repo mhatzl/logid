@@ -29,5 +29,7 @@ pub mod capturing;
 pub mod crate_map;
 pub mod id_entry;
 pub mod id_map;
+
+pub mod event;
 pub mod log_id;
 pub mod publisher;
