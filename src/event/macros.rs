@@ -14,6 +14,7 @@ macro_rules! set_event {
             $msg,
             file!(),
             line!(),
+            module_path!(),
         )
     };
     ($logid:ident, $msg:literal) => {
@@ -23,6 +24,7 @@ macro_rules! set_event {
             $msg,
             file!(),
             line!(),
+            module_path!(),
         )
     };
     ($logid:ident, $msg:expr) => {
@@ -32,6 +34,7 @@ macro_rules! set_event {
             $msg,
             file!(),
             line!(),
+            module_path!(),
         )
     };
     ($logid:expr, $msg:expr) => {
@@ -41,6 +44,7 @@ macro_rules! set_event {
             $msg,
             file!(),
             line!(),
+            module_path!(),
         )
     };
 }
@@ -55,15 +59,39 @@ macro_rules! set_event {
 #[macro_export]
 macro_rules! set_silent_event {
     ($logid:ident, $msg:ident) => {
-        $crate::event::EventFns::set_silent_event($crate::logid!($logid), $msg, file!(), line!())
+        $crate::event::EventFns::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+            module_path!(),
+        )
     };
     ($logid:ident, $msg:literal) => {
-        $crate::event::EventFns::set_silent_event($crate::logid!($logid), $msg, file!(), line!())
+        $crate::event::EventFns::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+            module_path!(),
+        )
     };
     ($logid:ident, $msg:expr) => {
-        $crate::event::EventFns::set_silent_event($crate::logid!($logid), $msg, file!(), line!())
+        $crate::event::EventFns::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+            module_path!(),
+        )
     };
     ($logid:expr, $msg:expr) => {
-        $crate::event::EventFns::set_silent_event($crate::logid!($logid), $msg, file!(), line!())
+        $crate::event::EventFns::set_silent_event(
+            $crate::logid!($logid),
+            $msg,
+            file!(),
+            line!(),
+            module_path!(),
+        )
     };
 }

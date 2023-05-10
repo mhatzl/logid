@@ -25,7 +25,15 @@ pub trait EventFns {
     /// * `msg` ... Main message that is set for this log-id (should be a user-centered event description)
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
-    fn set_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32) -> Event;
+    /// * `module_path` ... Module path where the event is set (Note: use `module_path!()`)
+    fn set_event(
+        self,
+        crate_name: &'static str,
+        msg: &str,
+        filename: &str,
+        line_nr: u32,
+        module_path: &str,
+    ) -> Event;
 
     /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
     ///
@@ -34,12 +42,13 @@ pub trait EventFns {
     /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event;
+    /// * `module_path` ... Module path where the event is set (Note: use `module_path!()`)
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event;
 }
 
 /// Traces a [`Entry`] creation.
-fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Entry {
-    let id_entry = Entry::new(id, msg, filename, line_nr);
+fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Entry {
+    let id_entry = Entry::new(id, msg, filename, line_nr, module_path);
 
     // Note: It is not possible to set `target` via parameter, because it requires `const`
     // Same goes for `level` for the `event` macro => match and code duplication needed
@@ -56,16 +65,23 @@ fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Entry {
 }
 
 impl EventFns for LogId {
-    fn set_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32) -> Event {
+    fn set_event(
+        self,
+        crate_name: &'static str,
+        msg: &str,
+        filename: &str,
+        line_nr: u32,
+        module_path: &str,
+    ) -> Event {
         Event {
-            entry: create_entry(self, msg, filename, line_nr),
+            entry: create_entry(self, msg, filename, line_nr, module_path),
             crate_name: Some(crate_name),
         }
     }
 
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32) -> Event {
+    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event {
         Event {
-            entry: create_entry(self, msg, filename, line_nr),
+            entry: create_entry(self, msg, filename, line_nr, module_path),
             crate_name: None,
         }
     }
@@ -131,6 +147,10 @@ impl Event {
     /// Returns the [`LogId`] of the [`MappedLogId`].
     pub fn id(&self) -> LogId {
         self.entry.id
+    }
+
+    pub fn entry(&self) -> &Entry {
+        &self.entry
     }
 
     /// Add an info message for this log-id

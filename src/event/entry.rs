@@ -68,13 +68,19 @@ impl Hash for Entry {
 
 impl Entry {
     /// Create a new [`LogIdEntry`].
-    pub(crate) fn new(id: LogId, msg: &str, filename: &str, line_nr: u32) -> Self {
+    pub(crate) fn new(
+        id: LogId,
+        msg: &str,
+        filename: &str,
+        line_nr: u32,
+        module_path: &str,
+    ) -> Self {
         Entry {
             hash: compute_hash(filename, line_nr),
             id,
             level: id.get_level(),
             msg: msg.to_string(),
-            origin: Origin::new(filename, line_nr),
+            origin: Origin::new(filename, line_nr, module_path),
             span: if let Some(span) = tracing::span::Span::current().metadata() {
                 span.name()
             } else {

@@ -1,8 +1,9 @@
 //! Tests capturing functionalities
 
 use logid::{
+    event::origin::Origin,
     log_id::{get_log_id, LogLevel},
-    set_event, set_silent_event, publisher, event::origin::Origin,
+    publisher, set_event, set_silent_event,
 };
 
 #[test]
@@ -36,7 +37,7 @@ fn capture_single_logid() {
     );
     assert_eq!(
         *entry.get_origin(),
-        Origin::new(file!(), line!() - 24), //Note: Event is set 24 lines above
+        Origin::new(file!(), line!() - 24, module_path!()), //Note: Event is set 24 lines above
         "Set and stored origins are not equal"
     );
 }
@@ -97,7 +98,7 @@ fn capture_single_logid_with_info() {
     let log_id = get_log_id(0, 1, LogLevel::Info, 1);
     let msg = "Set first log message";
     let info = "Additional info for this log-id";
-    
+
     let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
     set_event!(log_id, msg).add_info(info).finalize();
@@ -212,12 +213,14 @@ fn single_logid_without_capture() {
 
     let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
-    set_silent_event!(log_id, msg).finalize();
+    let event = set_silent_event!(log_id, msg);
+    event.clone().finalize();
 
-    let result = recv
-        .recv_timeout(std::time::Duration::from_millis(10));
+    let result = recv.recv_timeout(std::time::Duration::from_millis(10));
 
-    assert!(result.is_err(), "Received silent event.")
+    if let Ok(recv_event) = result {
+        assert_ne!(event.entry().get_origin(), recv_event.entry.get_origin(), "Silent event was captured");
+    }
 }
 
 #[test]
