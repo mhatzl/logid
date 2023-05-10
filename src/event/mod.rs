@@ -8,8 +8,9 @@ use self::{entry::Entry, msg::EventMsg};
 
 #[cfg(feature = "diagnostics")]
 use self::diagnostic::Diagnostic;
-
+#[cfg(feature = "diagnostics")]
 pub mod diagnostic;
+
 pub mod entry;
 pub mod macros;
 pub mod msg;
