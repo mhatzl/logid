@@ -2,7 +2,7 @@
 
 use crate::{
     id_entry::{EntryKind, LogIdEntry},
-    log_id::{EventLevel, LogId}, publisher::{PUBLISHER, EventMsg},
+    log_id::{EventLevel, LogId}, publisher::{PUBLISHER, EventMsg, SubscriptionKey},
 };
 
 #[cfg(feature = "diagnostics")]
@@ -206,7 +206,16 @@ impl Drop for LogIdEvent {
         }
         let id = self.entry.id;
         let crate_name = self.crate_name.unwrap();
-        if let Err(err) = PUBLISHER.sender.send(EventMsg {
+        let key = SubscriptionKey::new(crate_name, id);
+        // non-blocking read to prevent some events without subscribers to be sent.
+        // If read-lock could not be aquired, a useless message is sent, but this is better than blocking here.
+        if let Ok(subs) = PUBLISHER.subscriptions.try_read() {
+            if !subs.contains_key(&key) {
+                return;
+            }
+        }
+
+        if let Err(err) = PUBLISHER.sender.try_send(EventMsg {
             crate_name,
             entry: std::mem::take(&mut self.entry),
         }) {
@@ -279,7 +288,7 @@ impl LogIdEvent {
 }
 
 fn add_addon_to_entry(id_event: &mut LogIdEvent, kind: EntryKind) {
-    // Note: Silent events cannot move entries to a LogIdMap, so there is no need to store it either.
+    // Note: Silent events are not published, so there is no need to store information either.
     if id_event.crate_name.is_none() {
         return;
     }
