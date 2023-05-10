@@ -127,7 +127,7 @@ impl Drop for Event {
         let hash = self.entry.hash;
         let crate_name = self.crate_name.unwrap();
 
-        if let Err(err) = PUBLISHER.capturer.send(EventMsg {
+        if let Err(err) = PUBLISHER.capturer.try_send(EventMsg {
             crate_name,
             entry: std::mem::take(&mut self.entry),
         }) {
