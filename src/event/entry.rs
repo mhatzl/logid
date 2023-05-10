@@ -9,7 +9,7 @@ use crate::log_id::{LogId, LogIdParts, LogLevel};
 use super::origin::Origin;
 
 #[cfg(feature = "diagnostics")]
-use super::diagnostic::Diagnostic;
+use lsp_types::Diagnostic;
 
 /// Structure to capture all messages set for a log-id.
 #[derive(Debug, Clone, Eq, Default)]

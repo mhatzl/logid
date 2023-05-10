@@ -7,9 +7,7 @@ use crate::{
 use self::{entry::Entry, msg::EventMsg};
 
 #[cfg(feature = "diagnostics")]
-use self::diagnostic::Diagnostic;
-#[cfg(feature = "diagnostics")]
-pub mod diagnostic;
+use lsp_types::Diagnostic;
 
 pub mod entry;
 pub mod macros;
