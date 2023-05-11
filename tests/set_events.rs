@@ -45,6 +45,8 @@ fn capture_single_logid() {
 #[cfg(feature = "causes")]
 #[test]
 fn capture_single_logid_with_cause() {
+    use logid::event::Event;
+
     let cause_log_id = get_log_id(0, 0, LogLevel::Warn, 1);
     let cause_msg = "Cause log message";
     let log_id = get_log_id(0, 0, LogLevel::Error, 2);
@@ -63,7 +65,11 @@ fn capture_single_logid_with_cause() {
         .unwrap();
 
     set_event!(log_id, msg)
-        .add_cause(cause_event.entry)
+        .add_cause(Event {
+            crate_name: cause_event.crate_name,
+            entry: cause_event.entry,
+            is_silent: false,
+        })
         .finalize();
 
     let event = recv
@@ -76,12 +82,12 @@ fn capture_single_logid_with_cause() {
         "Set and received log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().get_id(),
+        event.entry.get_causes().get(0).unwrap().entry().get_id(),
         &cause_log_id,
         "Set and received causing log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().get_msg(),
+        event.entry.get_causes().get(0).unwrap().entry().get_msg(),
         &cause_msg,
         "Set and received causing msgs are not equal"
     );

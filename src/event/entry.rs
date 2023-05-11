@@ -6,7 +6,7 @@ use std::{
 
 use crate::log_id::{LogId, LogIdParts, LogLevel};
 
-use super::origin::Origin;
+use super::{origin::Origin, Event};
 
 #[cfg(feature = "diagnostics")]
 use lsp_types::Diagnostic;
@@ -35,9 +35,9 @@ pub struct Entry {
     /// Name of the span that was current when the log-id event was set
     pub(crate) span: &'static str,
 
-    /// List of other log-id entries that caused this log-id entry
+    /// List of other log-id events that caused this log-id entry
     #[cfg(feature = "causes")]
-    pub(crate) causes: Vec<Entry>,
+    pub(crate) causes: Vec<Event>,
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
@@ -116,7 +116,7 @@ impl Entry {
         self.span
     }
 
-    pub fn get_causes(&self) -> &Vec<Entry> {
+    pub fn get_causes(&self) -> &Vec<Event> {
         &self.causes
     }
 
@@ -158,7 +158,7 @@ pub(crate) enum EntryKind {
     Trace(String),
 
     #[cfg(feature = "causes")]
-    Cause(Entry),
+    Cause(Event),
 
     #[cfg(feature = "diagnostics")]
     Diagnostic(Diagnostic),

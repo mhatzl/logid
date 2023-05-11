@@ -107,14 +107,14 @@ impl EventFns for LogId {
 }
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct Event {
     /// Crate name identifying the [`LogIdMap`] the [`LogIdEvent`] is associated with, or none for silent events.
-    crate_name: &'static str,
+    pub crate_name: &'static str,
     /// [`Entry`] for the [`LogIdEvent`] storing all event information.
-    pub(crate) entry: Entry,
+    pub entry: Entry,
     /// Flag to mark an event as silent (`is_silent == true`)
-    pub(crate) is_silent: bool,
+    pub is_silent: bool,
 }
 
 impl From<Event> for LogId {
@@ -201,11 +201,11 @@ impl Event {
         self
     }
 
-    /// Add a log-id entry that caused this log-id event
+    /// Add a log-id event that caused this log-id event
     #[cfg(feature = "causes")]
-    pub fn add_cause(mut self, entry: Entry) -> Self {
-        tracing::info!("{}(cause): {}", self.entry.hash, entry);
-        add_addon_to_entry(&mut self, EntryKind::Cause(entry));
+    pub fn add_cause(mut self, event: Event) -> Self {
+        tracing::info!("{}(cause): {}", self.entry.hash, event.entry);
+        add_addon_to_entry(&mut self, EntryKind::Cause(event));
         self
     }
 
