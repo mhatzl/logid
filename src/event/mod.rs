@@ -42,7 +42,14 @@ pub trait EventFns {
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
     /// * `module_path` ... Module path where the event is set (Note: use `module_path!()`)
-    fn set_silent_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event;
+    fn set_silent_event(
+        self,
+        crate_name: &'static str,
+        msg: &str,
+        filename: &str,
+        line_nr: u32,
+        module_path: &str,
+    ) -> Event;
 }
 
 /// Traces a [`Entry`] creation.
@@ -83,7 +90,14 @@ impl EventFns for LogId {
         }
     }
 
-    fn set_silent_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event {
+    fn set_silent_event(
+        self,
+        crate_name: &'static str,
+        msg: &str,
+        filename: &str,
+        line_nr: u32,
+        module_path: &str,
+    ) -> Event {
         Event {
             entry: create_entry(self, msg, filename, line_nr, module_path),
             crate_name,
