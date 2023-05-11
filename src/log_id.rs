@@ -47,22 +47,6 @@ pub enum LogLevel {
     Error = 3,
 }
 
-impl From<&tracing::Level> for LogLevel {
-    /// Converts tracing::Level to EventLevel.
-    /// `DEBUG` and `TRACE` are both converted to `EventLevel::Debug`.
-    fn from(level: &tracing::Level) -> Self {
-        if level == &tracing::Level::ERROR {
-            LogLevel::Error
-        } else if level == &tracing::Level::WARN {
-            LogLevel::Warn
-        } else if level == &tracing::Level::INFO {
-            LogLevel::Info
-        } else {
-            LogLevel::Debug
-        }
-    }
-}
-
 /// Trait needed to implement functions on [`LogId`], due to `isize` wrap.
 pub trait LogIdParts {
     /// Get the main group of this log-id
@@ -89,8 +73,7 @@ impl LogIdParts for LogId {
         } else if level == (LogLevel::Debug as isize) {
             LogLevel::Debug
         } else {
-            tracing::trace!("Invalid event level={} for id={}", level, self);
-            LogLevel::Error
+            unreachable!()
         }
     }
 

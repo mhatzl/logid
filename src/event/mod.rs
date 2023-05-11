@@ -1,4 +1,4 @@
-use crate::log_id::{LogId, LogLevel};
+use crate::log_id::LogId;
 
 use self::{entry::EventEntry, intermediary::IntermediaryEvent};
 
@@ -28,34 +28,6 @@ pub trait EventFns {
     ) -> IntermediaryEvent;
 }
 
-/// Traces a [`Entry`] creation.
-fn create_entry(
-    id: LogId,
-    msg: &str,
-    filename: &str,
-    line_nr: u32,
-    module_path: &str,
-) -> EventEntry {
-    let id_entry = EventEntry::new(id, msg, filename, line_nr, module_path);
-
-    // Note: It is not possible to set `target` via parameter, because it requires `const`
-    // Same goes for `level` for the `event` macro => match and code duplication needed
-    match id_entry.level {
-        LogLevel::Error => tracing::error!("{}(id={}): {}", id_entry.hash, id, msg),
-        LogLevel::Warn => tracing::warn!("{}(id={}): {}", id_entry.hash, id, msg),
-        LogLevel::Info => tracing::info!("{}(id={}): {}", id_entry.hash, id, msg),
-        LogLevel::Debug => tracing::debug!("{}(id={}): {}", id_entry.hash, id, msg),
-    }
-
-    tracing::trace!(
-        "{}(origin): {}",
-        id_entry.hash,
-        String::from(&id_entry.origin)
-    );
-
-    id_entry
-}
-
 impl EventFns for LogId {
     fn set_event(
         self,
@@ -66,7 +38,7 @@ impl EventFns for LogId {
         module_path: &str,
     ) -> IntermediaryEvent {
         IntermediaryEvent {
-            entry: create_entry(self, msg, filename, line_nr, module_path),
+            entry: EventEntry::new(self, msg, filename, line_nr, module_path),
             crate_name,
         }
     }

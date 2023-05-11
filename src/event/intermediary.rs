@@ -35,21 +35,12 @@ impl PartialEq<IntermediaryEvent> for LogId {
 impl Drop for IntermediaryEvent {
     /// On drop, transforms the [`IntermediaryEvent`] into an [`Event`] that gets sent to the central publisher.
     fn drop(&mut self) {
-        let hash = self.entry.hash;
-
         // Note: Since IntermediaryEvent implements `Drop`, the Event struct is needed for message passing.
         // Passing `IntermediaryEvent` directly created unpredictable behaviors in tests.
-        if let Err(err) = PUBLISHER.capturer.try_send(Event {
+        let _ = PUBLISHER.capturer.try_send(Event {
             crate_name: self.crate_name,
             entry: std::mem::take(&mut self.entry),
-        }) {
-            tracing::error!(
-                "{}(send): {}",
-                hash,
-                "Failed sending log-id to central map."
-            );
-            tracing::debug!("{}(send-cause): {}", hash, err);
-        }
+        });
     }
 }
 
@@ -81,21 +72,18 @@ impl IntermediaryEvent {
 
     /// Add an info message to this log-id event
     pub fn add_info(mut self, msg: &str) -> Self {
-        tracing::info!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Info(msg.to_owned()));
         self
     }
 
     /// Add a debug message to this log-id event
     pub fn add_debug(mut self, msg: &str) -> Self {
-        tracing::debug!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Debug(msg.to_owned()));
         self
     }
 
     /// Add a trace message to this log-id event
     pub fn add_trace(mut self, msg: &str) -> Self {
-        tracing::trace!("{}(addon): {}", self.entry.hash, msg);
         add_addon_to_entry(&mut self, EntryKind::Trace(msg.to_owned()));
         self
     }
@@ -103,7 +91,6 @@ impl IntermediaryEvent {
     /// Add a log-id event that caused this log-id event
     #[cfg(feature = "causes")]
     pub fn add_cause(mut self, event_msg: Event) -> Self {
-        tracing::info!("{}(cause): {:?}", self.entry.hash, event_msg);
         add_addon_to_entry(&mut self, EntryKind::Cause(event_msg));
         self
     }
@@ -111,7 +98,6 @@ impl IntermediaryEvent {
     /// Add diagnostic info to this log-id event
     #[cfg(feature = "diagnostics")]
     pub fn add_diagnostic(mut self, diagnostic: Diagnostic) -> Self {
-        tracing::trace!("{}(diag): {:?}", self.entry.hash, diagnostic);
         add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
         self
     }
@@ -119,7 +105,6 @@ impl IntermediaryEvent {
     /// Add a payload to this log-id event
     #[cfg(feature = "payloads")]
     pub fn add_payload(mut self, payload: serde_json::value::Value) -> Self {
-        tracing::trace!("{}(payload): {:?}", self.entry.hash, payload);
         add_addon_to_entry(&mut self, EntryKind::Payload(payload));
         self
     }
