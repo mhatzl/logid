@@ -26,24 +26,6 @@ pub trait EventFns {
         line_nr: u32,
         module_path: &str,
     ) -> IntermediaryEvent;
-
-    /// Set an event for a [`LogId`] **without** adding it to a [`LogIdMap`].
-    ///
-    /// # Arguments
-    ///
-    /// * `crate_name` ... Name of the crate to identify the [`LogIdMap`]
-    /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
-    /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
-    /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
-    /// * `module_path` ... Module path where the event is set (Note: use `module_path!()`)
-    fn set_silent_event(
-        self,
-        crate_name: &'static str,
-        msg: &str,
-        filename: &str,
-        line_nr: u32,
-        module_path: &str,
-    ) -> IntermediaryEvent;
 }
 
 /// Traces a [`Entry`] creation.
@@ -86,22 +68,6 @@ impl EventFns for LogId {
         IntermediaryEvent {
             entry: create_entry(self, msg, filename, line_nr, module_path),
             crate_name,
-            is_silent: false,
-        }
-    }
-
-    fn set_silent_event(
-        self,
-        crate_name: &'static str,
-        msg: &str,
-        filename: &str,
-        line_nr: u32,
-        module_path: &str,
-    ) -> IntermediaryEvent {
-        IntermediaryEvent {
-            entry: create_entry(self, msg, filename, line_nr, module_path),
-            crate_name,
-            is_silent: true,
         }
     }
 }

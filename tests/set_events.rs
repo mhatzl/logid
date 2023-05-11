@@ -3,7 +3,7 @@
 use logid::{
     event::{origin::Origin, EventFns},
     log_id::{get_log_id, LogLevel, ANONYMOUS_LOG_ID},
-    publisher, set_event, set_silent_event, subscribe,
+    publisher, set_event, subscribe,
 };
 
 #[test]
@@ -200,39 +200,6 @@ fn capture_single_logid_with_trace() {
     );
     let act_trace = entry.get_traces().last().unwrap();
     assert_eq!(act_trace, trace, "Set and stored messages are not equal");
-}
-
-#[test]
-fn single_logid_without_capture() {
-    let log_id = get_log_id(0, 0, LogLevel::Error, 2);
-    let msg = "Set first log message";
-
-    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
-
-    let event = set_silent_event!(log_id, msg);
-    event.clone().finalize();
-
-    let result = recv.recv_timeout(std::time::Duration::from_millis(10));
-
-    if let Ok(recv_event) = result {
-        assert_ne!(
-            event.get_entry().get_origin(),
-            recv_event.get_entry().get_origin(),
-            "Silent event was captured"
-        );
-    }
-}
-
-#[test]
-fn logid_correctly_set_in_silent_event() {
-    let log_id = get_log_id(0, 0, LogLevel::Error, 2);
-    let msg = "Set first log message";
-
-    let event = set_silent_event!(log_id, msg);
-    event.clone().finalize();
-
-    assert!(event == log_id, "LogIdEvent and LogId are not equal");
-    assert!(log_id == event, "LogId and LogIdEvent are not equal");
 }
 
 #[test]

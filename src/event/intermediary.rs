@@ -12,8 +12,6 @@ pub struct IntermediaryEvent {
     pub(crate) crate_name: &'static str,
     /// [`Entry`] for the [`LogIdEvent`] storing all event information.
     pub(crate) entry: EventEntry,
-    /// Flag to mark an event as silent (`is_silent == true`)
-    pub(crate) is_silent: bool,
 }
 
 impl From<IntermediaryEvent> for LogId {
@@ -35,12 +33,8 @@ impl PartialEq<IntermediaryEvent> for LogId {
 }
 
 impl Drop for IntermediaryEvent {
-    /// Drops the [`LogIdEvent`].
-    /// If the event was not created *silently*, it moves the entry into the [`LogIdMap`] associated with the event.
+    /// On drop, transforms the [`IntermediaryEvent`] into an [`Event`] that gets sent to the central publisher.
     fn drop(&mut self) {
-        if self.is_silent {
-            return;
-        }
         let hash = self.entry.hash;
 
         // Note: Since IntermediaryEvent implements `Drop`, the Event struct is needed for message passing.
@@ -70,11 +64,6 @@ impl std::fmt::Debug for IntermediaryEvent {
 }
 
 impl IntermediaryEvent {
-    /// Returns `true` if this log-id event is silent
-    pub fn is_silent(&self) -> bool {
-        self.is_silent
-    }
-
     /// Returns the [`LogId`] of this log-id event
     pub fn get_id(&self) -> LogId {
         self.entry.id
@@ -146,11 +135,6 @@ impl IntermediaryEvent {
 }
 
 fn add_addon_to_entry(id_event: &mut IntermediaryEvent, kind: EntryKind) {
-    // Note: Silent events are not published, so there is no need to store information either.
-    if id_event.is_silent {
-        return;
-    }
-
     match kind {
         EntryKind::Info(msg) => id_event.entry.infos.push(msg),
         EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
