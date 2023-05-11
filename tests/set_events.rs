@@ -2,8 +2,8 @@
 
 use logid::{
     event::{origin::Origin, EventFns},
-    log_id::{get_log_id, LogLevel},
-    publisher, set_event, set_silent_event,
+    log_id::{get_log_id, LogLevel, ANONYMOUS_LOG_ID},
+    publisher, set_event, set_silent_event, subscribe,
 };
 
 #[test]
@@ -391,5 +391,35 @@ fn capture_single_logid_with_diagnostics() {
     assert_eq!(
         act_diagnostics, &diagnostics,
         "Set and stored diagnostics are not equal"
+    );
+}
+
+#[test]
+fn capture_anonymous_logid() {
+    let msg = "Set anonymous log message";
+
+    let recv = subscribe!(ANONYMOUS_LOG_ID).unwrap();
+
+    set_event!(ANONYMOUS_LOG_ID, msg).finalize();
+
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+
+    let entry = event.get_entry();
+    assert_eq!(
+        *entry.get_id(),
+        ANONYMOUS_LOG_ID,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
+        LogLevel::Debug,
+        "Set and stored event levels are not equal"
+    );
+    assert_eq!(
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
     );
 }

@@ -27,8 +27,11 @@ macro_rules! logids {
     };
 }
 
-/// Represents an invalid log-id
-pub const INVALID_LOG_ID: LogId = 0;
+/// An anonymous log-id that may be used to create general events not related to a specific [`LogId`].
+/// It automatically has [`LogLevel::Debug`].
+///
+/// **Note:** This [`LogId`] represents an **invalid** [`LogId`] that cannot be created using the [`get_log_id`] function.
+pub const ANONYMOUS_LOG_ID: LogId = 0;
 
 /// Log level a log-id may represent.
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
