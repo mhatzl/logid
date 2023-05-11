@@ -170,13 +170,23 @@ impl std::fmt::Debug for Event {
 }
 
 impl Event {
+    /// Returns `true` if this log-id event is silent
+    pub fn is_silent(&self) -> bool {
+        self.is_silent
+    }
+
     /// Returns the [`LogId`] of this log-id event
-    pub fn id(&self) -> LogId {
+    pub fn get_id(&self) -> LogId {
         self.entry.id
     }
 
+    /// Returns the name of the associated crate of this log-id event
+    pub fn get_crate_name(&self) -> &'static str {
+        self.crate_name
+    }
+
     /// Returns the [`Entry`] of this log-id event
-    pub fn entry(&self) -> &Entry {
+    pub fn get_entry(&self) -> &Entry {
         &self.entry
     }
 

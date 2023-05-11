@@ -82,12 +82,12 @@ fn capture_single_logid_with_cause() {
         "Set and received log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().entry().get_id(),
+        event.entry.get_causes().get(0).unwrap().get_entry().get_id(),
         &cause_log_id,
         "Set and received causing log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().entry().get_msg(),
+        event.entry.get_causes().get(0).unwrap().get_entry().get_msg(),
         &cause_msg,
         "Set and received causing msgs are not equal"
     );
@@ -212,7 +212,7 @@ fn single_logid_without_capture() {
 
     if let Ok(recv_event) = result {
         assert_ne!(
-            event.entry().get_origin(),
+            event.get_entry().get_origin(),
             recv_event.entry.get_origin(),
             "Silent event was captured"
         );
