@@ -202,8 +202,10 @@ fn capture_single_logid_with_trace() {
     assert_eq!(act_trace, trace, "Set and stored messages are not equal");
 }
 
+#[cfg(feature = "spans")]
 #[test]
 fn logid_with_span() {
+    // Note: Tracing subscribers are responsible for span handling => simple subscriber needed for span testing
     tracing_subscriber::fmt::init();
     const SPAN_NAME: &str = "mySpan";
 
@@ -222,7 +224,11 @@ fn logid_with_span() {
         .unwrap();
 
     let entry = event.get_entry();
-    assert_eq!(entry.get_span(), SPAN_NAME, "Span names are not equal");
+    assert_eq!(
+        entry.get_span().as_ref().unwrap().metadata().unwrap(),
+        span.metadata().unwrap(),
+        "Span names are not equal"
+    );
 }
 
 #[test]

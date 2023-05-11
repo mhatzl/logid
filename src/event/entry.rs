@@ -12,7 +12,7 @@ use super::{origin::Origin, Event};
 use lsp_types::Diagnostic;
 
 /// Structure to capture all messages set for a log-id.
-#[derive(Debug, Clone, Eq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct EventEntry {
     /// The hash uniquely identifying this entry.
     ///
@@ -32,8 +32,10 @@ pub struct EventEntry {
     pub(crate) traces: Vec<String>,
     /// Code position where the log-id entry was created
     pub(crate) origin: Origin,
+
     /// Name of the span that was current when the log-id event was set
-    pub(crate) span: &'static str,
+    #[cfg(feature = "spans")]
+    pub(crate) span: Option<tracing::span::Span>,
 
     /// List of other log-id events that caused this log-id entry
     #[cfg(feature = "causes")]
@@ -63,14 +65,16 @@ impl EventEntry {
             level: id.get_level(),
             msg: msg.to_string(),
             origin: Origin::new(filename, line_nr, module_path),
-            span: if let Some(span) = tracing::span::Span::current().metadata() {
-                span.name()
-            } else {
-                "event not in span"
-            },
             infos: Vec::default(),
             debugs: Vec::default(),
             traces: Vec::default(),
+
+            #[cfg(feature = "spans")]
+            span: if tracing::span::Span::current().is_disabled() {
+                None
+            } else {
+                Some(tracing::span::Span::current())
+            },
 
             #[cfg(feature = "causes")]
             causes: Vec::default(),
@@ -112,8 +116,8 @@ impl EventEntry {
         &self.origin
     }
     /// Get the name of the span that was current when the log-id event was set
-    pub fn get_span(&self) -> &str {
-        self.span
+    pub fn get_span(&self) -> &Option<tracing::span::Span> {
+        &self.span
     }
 
     pub fn get_causes(&self) -> &Vec<Event> {
@@ -134,6 +138,8 @@ impl PartialEq for EventEntry {
         self.hash == other.hash
     }
 }
+
+impl Eq for EventEntry {}
 
 impl Hash for EventEntry {
     fn hash<H: Hasher>(&self, state: &mut H) {
