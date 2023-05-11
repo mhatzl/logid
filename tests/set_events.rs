@@ -1,7 +1,7 @@
 //! Tests capturing functionalities
 
 use logid::{
-    event::origin::Origin,
+    event::{origin::Origin, EventFns},
     log_id::{get_log_id, LogLevel},
     publisher, set_event, set_silent_event,
 };
@@ -157,48 +157,40 @@ fn capture_single_logid_with_debug() {
     assert_eq!(act_debug, debug, "Set and stored messages are not equal");
 }
 
-// #[test]
-// fn capture_single_logid_with_trace() {
-//     drain_map!();
+#[test]
+fn capture_single_logid_with_trace() {
+    let log_id = get_log_id(1, 1, LogLevel::Debug, 0);
+    let msg = "Set first log message";
+    let trace = "Additional debug info for this log-id";
 
-//     let log_id = get_log_id(1, 1, EventLevel::Debug, 0);
-//     let msg = "Set first log message";
-//     let trace = "Additional debug info for this log-id";
-//     let event = set_event!(log_id, msg).add_trace(trace);
-//     event.clone().finalize();
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
-//     let map = delayed_map_drain();
+    set_event!(log_id, msg).add_trace(trace).finalize();
 
-//     assert_eq!(map.len(), 1, "More than one or no event captured!");
-//     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     let entries = map.get(&log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         1,
-//         "More than one or no entry for the same log-id"
-//     );
+    let entry = event.entry;
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
+        LogLevel::Debug,
+        "Set and stored event levels are not equal"
+    );
 
-//     let entry = entries.get_entry(&event).unwrap();
-//     assert_eq!(
-//         *entry.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_level(),
-//         EventLevel::Debug,
-//         "Set and stored event levels are not equal"
-//     );
-
-//     assert_eq!(
-//         entry.get_traces().len(),
-//         1,
-//         "More than one or no trace was set"
-//     );
-//     let act_trace = entry.get_traces().last().unwrap();
-//     assert_eq!(act_trace, trace, "Set and stored messages are not equal");
-// }
+    assert_eq!(
+        entry.get_traces().len(),
+        1,
+        "More than one or no trace was set"
+    );
+    let act_trace = entry.get_traces().last().unwrap();
+    assert_eq!(act_trace, trace, "Set and stored messages are not equal");
+}
 
 #[test]
 fn single_logid_without_capture() {
@@ -233,128 +225,161 @@ fn logid_correctly_set_in_silent_event() {
     assert!(log_id == event, "LogId and LogIdEvent are not equal");
 }
 
-// #[test]
-// fn logid_with_span() {
-//     drain_map!();
+#[test]
+fn logid_with_span() {
+    tracing_subscriber::fmt::init();
+    const SPAN_NAME: &str = "mySpan";
 
-//     tracing_subscriber::fmt::init();
-//     const SPAN_NAME: &str = "mySpan";
+    let log_id = get_log_id(0, 0, LogLevel::Info, 2);
+    let msg = "Set first log message";
 
-//     let log_id = get_log_id(0, 0, EventLevel::Info, 2);
-//     let msg = "Set first log message";
-//     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
-//     // Assignment only to initialize mapped => silent_event
-//     let mut event = set_silent_event!(log_id, msg);
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
-//     let _ = span.in_scope(|| {
-//         event = set_event!(log_id, msg);
-//         event.clone().finalize()
-//     });
+    let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
+    span.in_scope(|| {
+        set_event!(log_id, msg);
+    });
 
-//     let map = delayed_map_drain();
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     let entries = map.get(&log_id).unwrap();
-//     let entry = entries.get_entry(&event).unwrap();
+    let entry = event.entry;
+    assert_eq!(entry.get_span(), SPAN_NAME, "Span names are not equal");
+}
 
-//     assert_eq!(entry.get_span(), SPAN_NAME, "Span names are not equal");
-// }
+#[test]
+fn capture_same_logid_twice_with_different_origin() {
+    let log_id = get_log_id(0, 0, LogLevel::Error, 2);
+    let msg = "Set first log message";
 
-// #[test]
-// fn capture_same_logid_twice_with_different_origin() {
-//     drain_map!();
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
-//     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
-//     let msg = "Set first log message";
-//     let line_1 = line!() + 1;
-//     let event_1 = set_event!(log_id, msg);
-//     event_1.clone().finalize();
-//     let line_2 = line!() + 1;
-//     let event_2 = set_event!(log_id, msg);
-//     event_2.clone().finalize();
+    let line_1 = line!() + 1;
+    set_event!(log_id, msg).finalize();
 
-//     let map = delayed_map_drain();
+    let line_2 = line!() + 1;
+    set_event!(log_id, msg).finalize();
 
-//     assert_eq!(map.len(), 1, "More than two or less events captured!");
-//     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+    let event_1 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    let event_2 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     let entries = map.get(&log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         2,
-//         "More than one or no entry for the same log-id"
-//     );
+    let entry_1 = event_1.entry;
+    assert_eq!(
+        *entry_1.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_1.get_origin().line_nr,
+        line_1,
+        "Set and stored line numbers are not equal"
+    );
 
-//     let entry_1 = entries.get_entry(&event_1).unwrap();
-//     assert_eq!(
-//         *entry_1.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         entry_1.get_origin().line_nr,
-//         line_1,
-//         "Set and stored line numbers are not equal"
-//     );
+    let entry_2 = event_2.entry;
+    assert_eq!(
+        *entry_2.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_2.get_origin().line_nr,
+        line_2,
+        "Set and stored line numbers are not equal"
+    );
+}
 
-//     let entry_2 = entries.get_entry(&event_2).unwrap();
-//     assert_eq!(
-//         *entry_2.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         entry_2.get_origin().line_nr,
-//         line_2,
-//         "Set and stored line numbers are not equal"
-//     );
-// }
+#[test]
+fn capture_same_logid_twice_with_same_origin() {
+    let log_id = get_log_id(0, 0, LogLevel::Error, 2);
+    let msg = "Set first log message";
+    let file = file!();
+    let line = line!();
 
-// #[test]
-// fn capture_same_logid_twice_with_same_origin() {
-//     drain_map!();
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
 
-//     let log_id = get_log_id(0, 0, EventLevel::Error, 2);
-//     let msg = "Set first log message";
-//     let file = file!();
-//     let line = line!();
-//     let event_1 = log_id.set_event(env!("CARGO_PKG_NAME"), msg, file, line);
-//     event_1.clone().finalize();
-//     let event_2 = log_id.set_event(env!("CARGO_PKG_NAME"), msg, file, line);
-//     event_2.clone().finalize();
+    log_id
+        .set_event(env!("CARGO_PKG_NAME"), msg, file, line, module_path!())
+        .finalize();
+    log_id
+        .set_event(env!("CARGO_PKG_NAME"), msg, file, line, module_path!())
+        .finalize();
 
-//     let map = delayed_map_drain();
+    let event_1 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+    let event_2 = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
 
-//     assert_eq!(map.len(), 1, "More than two or less events captured!");
-//     assert!(map.contains_key(&log_id), "Log-id not inside captured map!");
+    let entry_1 = event_1.entry;
+    assert_eq!(
+        *entry_1.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_1.get_origin().line_nr,
+        line,
+        "Set and stored line numbers are not equal"
+    );
 
-//     let entries = map.get(&log_id).unwrap();
-//     assert_eq!(
-//         entries.len(),
-//         2,
-//         "More than one or no entry for the same log-id"
-//     );
+    let entry_2 = event_2.entry;
+    assert_eq!(
+        *entry_2.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry_2.get_origin().line_nr,
+        line,
+        "Set and stored line numbers are not equal"
+    );
 
-//     let entry_1 = entries.get_entry(&event_1).unwrap();
-//     assert_eq!(
-//         *entry_1.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         entry_1.get_origin().line_nr,
-//         line,
-//         "Set and stored line numbers are not equal"
-//     );
+    assert_ne!(entry_1, entry_2, "Received events have the same entry");
+}
 
-//     let entry_2 = entries.get_entry(&event_2).unwrap();
-//     assert_eq!(
-//         *entry_2.get_id(),
-//         log_id,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         entry_2.get_origin().line_nr,
-//         line,
-//         "Set and stored line numbers are not equal"
-//     );
-// }
+#[cfg(feature = "diagnostics")]
+#[test]
+fn capture_single_logid_with_diagnostics() {
+    use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
+
+    let log_id = get_log_id(1, 1, LogLevel::Debug, 0);
+    let msg = "Set first log message";
+    let diagnostics = Diagnostic {
+        range: Range {
+            start: Position {
+                line: 0,
+                character: 4,
+            },
+            end: Position {
+                line: 0,
+                character: 10,
+            },
+        },
+        severity: Some(DiagnosticSeverity::INFORMATION),
+        message: "Some diagnostic information useful for lsp implementations.".to_owned(),
+        ..Default::default()
+    };
+
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
+
+    set_event!(log_id, msg)
+        .add_diagnostic(diagnostics.clone())
+        .finalize();
+
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+
+    let entry = event.entry;
+    let act_diagnostics = entry.get_diagnostics().last().unwrap();
+    assert_eq!(
+        act_diagnostics, &diagnostics,
+        "Set and stored diagnostics are not equal"
+    );
+}
