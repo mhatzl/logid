@@ -19,7 +19,7 @@ fn capture_single_logid() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     assert_eq!(
         *entry.get_id(),
         log_id,
@@ -62,26 +62,36 @@ fn capture_single_logid_with_cause() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    set_event!(log_id, msg)
-        .add_cause(cause_event)
-        .finalize();
+    set_event!(log_id, msg).add_cause(cause_event).finalize();
 
     let event = recv
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
     assert_eq!(
-        event.entry.get_id(),
+        event.get_entry().get_id(),
         &log_id,
         "Set and received log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().get_entry().get_id(),
+        event
+            .get_entry()
+            .get_causes()
+            .get(0)
+            .unwrap()
+            .get_entry()
+            .get_id(),
         &cause_log_id,
         "Set and received causing log-ids are not equal"
     );
     assert_eq!(
-        event.entry.get_causes().get(0).unwrap().get_entry().get_msg(),
+        event
+            .get_entry()
+            .get_causes()
+            .get(0)
+            .unwrap()
+            .get_entry()
+            .get_msg(),
         &cause_msg,
         "Set and received causing msgs are not equal"
     );
@@ -101,7 +111,7 @@ fn capture_single_logid_with_info() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     assert_eq!(
         *entry.get_id(),
         log_id,
@@ -136,7 +146,7 @@ fn capture_single_logid_with_debug() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     assert_eq!(
         *entry.get_id(),
         log_id,
@@ -171,7 +181,7 @@ fn capture_single_logid_with_trace() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     assert_eq!(
         *entry.get_id(),
         log_id,
@@ -207,7 +217,7 @@ fn single_logid_without_capture() {
     if let Ok(recv_event) = result {
         assert_ne!(
             event.get_entry().get_origin(),
-            recv_event.entry.get_origin(),
+            recv_event.get_entry().get_origin(),
             "Silent event was captured"
         );
     }
@@ -244,7 +254,7 @@ fn logid_with_span() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     assert_eq!(entry.get_span(), SPAN_NAME, "Span names are not equal");
 }
 
@@ -268,7 +278,7 @@ fn capture_same_logid_twice_with_different_origin() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry_1 = event_1.entry;
+    let entry_1 = event_1.get_entry();
     assert_eq!(
         *entry_1.get_id(),
         log_id,
@@ -280,7 +290,7 @@ fn capture_same_logid_twice_with_different_origin() {
         "Set and stored line numbers are not equal"
     );
 
-    let entry_2 = event_2.entry;
+    let entry_2 = event_2.get_entry();
     assert_eq!(
         *entry_2.get_id(),
         log_id,
@@ -316,7 +326,7 @@ fn capture_same_logid_twice_with_same_origin() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry_1 = event_1.entry;
+    let entry_1 = event_1.get_entry();
     assert_eq!(
         *entry_1.get_id(),
         log_id,
@@ -328,7 +338,7 @@ fn capture_same_logid_twice_with_same_origin() {
         "Set and stored line numbers are not equal"
     );
 
-    let entry_2 = event_2.entry;
+    let entry_2 = event_2.get_entry();
     assert_eq!(
         *entry_2.get_id(),
         log_id,
@@ -376,7 +386,7 @@ fn capture_single_logid_with_diagnostics() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
 
-    let entry = event.entry;
+    let entry = event.get_entry();
     let act_diagnostics = entry.get_diagnostics().last().unwrap();
     assert_eq!(
         act_diagnostics, &diagnostics,

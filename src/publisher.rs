@@ -9,7 +9,7 @@ use std::{
 
 use once_cell::sync::Lazy;
 
-use crate::{log_id::LogId, event::Event};
+use crate::{event::Event, log_id::LogId};
 
 pub(crate) static PUBLISHER: Lazy<LogIdEventPublisher> = Lazy::new(LogIdEventPublisher::new);
 

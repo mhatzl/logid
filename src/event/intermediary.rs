@@ -1,8 +1,4 @@
-use crate::{
-    event::entry::EntryKind,
-    log_id::LogId,
-    publisher::PUBLISHER,
-};
+use crate::{event::entry::EntryKind, log_id::LogId, publisher::PUBLISHER};
 
 use super::{entry::EventEntry, Event};
 
@@ -13,11 +9,11 @@ use lsp_types::Diagnostic;
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct IntermediaryEvent {
     /// Crate name identifying the [`LogIdMap`] the [`LogIdEvent`] is associated with, or none for silent events.
-    pub crate_name: &'static str,
+    pub(crate) crate_name: &'static str,
     /// [`Entry`] for the [`LogIdEvent`] storing all event information.
-    pub entry: EventEntry,
+    pub(crate) entry: EventEntry,
     /// Flag to mark an event as silent (`is_silent == true`)
-    pub is_silent: bool,
+    pub(crate) is_silent: bool,
 }
 
 impl From<IntermediaryEvent> for LogId {
@@ -47,6 +43,8 @@ impl Drop for IntermediaryEvent {
         }
         let hash = self.entry.hash;
 
+        // Note: Since IntermediaryEvent implements `Drop`, the Event struct is needed for message passing.
+        // Passing `IntermediaryEvent` directly created unpredictable behaviors in tests.
         if let Err(err) = PUBLISHER.capturer.try_send(Event {
             crate_name: self.crate_name,
             entry: std::mem::take(&mut self.entry),

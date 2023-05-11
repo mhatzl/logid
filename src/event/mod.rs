@@ -1,6 +1,4 @@
-use crate::{
-    log_id::{LogId, LogLevel},
-};
+use crate::log_id::{LogId, LogLevel};
 
 use self::{entry::EventEntry, intermediary::IntermediaryEvent};
 
@@ -33,6 +31,7 @@ pub trait EventFns {
     ///
     /// # Arguments
     ///
+    /// * `crate_name` ... Name of the crate to identify the [`LogIdMap`]
     /// * `msg` ... Main message that is set for this event (should be a user-centered event description)
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
@@ -48,7 +47,13 @@ pub trait EventFns {
 }
 
 /// Traces a [`Entry`] creation.
-fn create_entry(id: LogId, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> EventEntry {
+fn create_entry(
+    id: LogId,
+    msg: &str,
+    filename: &str,
+    line_nr: u32,
+    module_path: &str,
+) -> EventEntry {
     let id_entry = EventEntry::new(id, msg, filename, line_nr, module_path);
 
     // Note: It is not possible to set `target` via parameter, because it requires `const`
@@ -103,8 +108,8 @@ impl EventFns for LogId {
 
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct Event {
-    pub crate_name: &'static str,
-    pub entry: EventEntry,
+    pub(crate) crate_name: &'static str,
+    pub(crate) entry: EventEntry,
 }
 
 impl std::fmt::Debug for Event {
@@ -134,4 +139,3 @@ impl Event {
         &self.entry
     }
 }
-

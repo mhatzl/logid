@@ -28,12 +28,12 @@ fn set_different_events_in_two_threads() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
-        event_side.entry.get_id(),
+        event_side.get_entry().get_id(),
         &log_id_side,
         "Received side event has wrong LogId."
     );
     assert_eq!(
-        event_side.entry.get_msg(),
+        event_side.get_entry().get_msg(),
         msg_side,
         "Received side event has wrong msg."
     );
@@ -42,12 +42,12 @@ fn set_different_events_in_two_threads() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
-        event_main.entry.get_id(),
+        event_main.get_entry().get_id(),
         &log_id_main,
         "Received main event has wrong LogId."
     );
     assert_eq!(
-        event_main.entry.get_msg(),
+        event_main.get_entry().get_msg(),
         msg_main,
         "Received main event has wrong msg."
     );
@@ -73,12 +73,12 @@ fn set_same_logid_in_two_threads() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
-        event_1.entry.get_id(),
+        event_1.get_entry().get_id(),
         &log_id,
         "Received event 1 has wrong LogId."
     );
     assert!(
-        event_1.entry.get_msg() == msg_main || event_1.entry.get_msg() == msg_side,
+        event_1.get_entry().get_msg() == msg_main || event_1.get_entry().get_msg() == msg_side,
         "Received event 1 has wrong msg."
     );
 
@@ -86,18 +86,18 @@ fn set_same_logid_in_two_threads() {
         .recv_timeout(std::time::Duration::from_millis(10))
         .unwrap();
     assert_eq!(
-        event_2.entry.get_id(),
+        event_2.get_entry().get_id(),
         &log_id,
         "Received event 2 has wrong LogId."
     );
     assert!(
-        event_2.entry.get_msg() == msg_main || event_2.entry.get_msg() == msg_side,
+        event_2.get_entry().get_msg() == msg_main || event_2.get_entry().get_msg() == msg_side,
         "Received event 2 has wrong msg."
     );
 
     assert_ne!(
-        event_1.entry.get_msg(),
-        event_2.entry.get_msg(),
+        event_1.get_entry().get_msg(),
+        event_2.get_entry().get_msg(),
         "Both events have the same msg."
     );
 }
@@ -136,7 +136,7 @@ fn set_events_in_many_threads() {
             .recv_timeout(std::time::Duration::from_millis(10))
             .unwrap();
         assert_eq!(
-            event.entry.get_id(),
+            event.get_entry().get_id(),
             &log_id,
             "Received event {} has wrong LogId.",
             i
@@ -149,7 +149,7 @@ fn set_events_in_many_threads() {
             .recv_timeout(std::time::Duration::from_millis(10))
             .unwrap();
         assert_eq!(
-            event.entry.get_id(),
+            event.get_entry().get_id(),
             &base_log_id,
             "Received event {} has wrong LogId.",
             i
