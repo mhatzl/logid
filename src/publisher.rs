@@ -9,14 +9,14 @@ use std::{
 
 use once_cell::sync::Lazy;
 
-use crate::{event::msg::EventMsg, log_id::LogId};
+use crate::{log_id::LogId, event::Event};
 
 pub(crate) static PUBLISHER: Lazy<LogIdEventPublisher> = Lazy::new(LogIdEventPublisher::new);
 
 pub(crate) struct LogIdEventPublisher {
-    pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, Vec<SyncSender<EventMsg>>>>>,
-    pub(crate) any_event: Arc<RwLock<Vec<SyncSender<EventMsg>>>>,
-    pub(crate) capturer: SyncSender<EventMsg>,
+    pub(crate) subscriptions: Arc<RwLock<HashMap<SubscriptionKey, Vec<SyncSender<Event>>>>>,
+    pub(crate) any_event: Arc<RwLock<Vec<SyncSender<Event>>>>,
+    pub(crate) capturer: SyncSender<Event>,
 }
 
 /// Buffersize of the broadcast channel for capturing log events.
@@ -64,7 +64,7 @@ impl SubscriptionKey {
     }
 }
 
-pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<Receiver<EventMsg>> {
+pub fn subscribe(log_id: LogId, crate_name: &'static str) -> Option<Receiver<Event>> {
     let crate_logs = vec![log_id];
     let logs = vec![(crate_name, crate_logs)];
     subscribe_to_crates(&logs)
@@ -80,7 +80,7 @@ macro_rules! subscribe {
     };
 }
 
-pub fn subscribe_to_logs<T>(log_ids: T, crate_name: &'static str) -> Option<Receiver<EventMsg>>
+pub fn subscribe_to_logs<T>(log_ids: T, crate_name: &'static str) -> Option<Receiver<Event>>
 where
     T: Iterator<Item = LogId>,
 {
@@ -100,7 +100,7 @@ macro_rules! subscribe_to_logs {
 
 pub fn subscribe_to_crates(
     crate_logs: &Vec<(&'static str, Vec<LogId>)>,
-) -> Option<Receiver<EventMsg>> {
+) -> Option<Receiver<Event>> {
     let (send, recv) = mpsc::sync_channel(CHANNEL_BOUND);
 
     match PUBLISHER.subscriptions.write().ok() {
@@ -123,7 +123,7 @@ pub fn subscribe_to_crates(
     Some(recv)
 }
 
-pub fn subscribe_to_all_events() -> Option<Receiver<EventMsg>> {
+pub fn subscribe_to_all_events() -> Option<Receiver<Event>> {
     let (send, recv) = mpsc::sync_channel(CHANNEL_BOUND);
 
     match PUBLISHER.any_event.write().ok() {
@@ -138,7 +138,7 @@ pub fn subscribe_to_all_events() -> Option<Receiver<EventMsg>> {
     Some(recv)
 }
 
-pub(crate) fn on_event(event_msg: EventMsg) {
+pub(crate) fn on_event(event_msg: Event) {
     let key = SubscriptionKey::new(event_msg.crate_name, event_msg.entry.id);
 
     let mut bad_subs = Vec::new();

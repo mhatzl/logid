@@ -1,7 +1,7 @@
 use std::{sync::mpsc::Receiver, thread};
 
 use logid::{
-    event::msg::EventMsg,
+    event::Event,
     log_id::{get_log_id, LogLevel},
     set_event, subscribe,
 };
@@ -108,7 +108,7 @@ fn set_events_in_many_threads() {
     let base_log_id = get_log_id(0, 0, LogLevel::Error, 1);
     let msg = "Set log message";
 
-    let mut recvs: Vec<Receiver<EventMsg>> = Vec::new();
+    let mut recvs: Vec<Receiver<Event>> = Vec::new();
     for i in 1..=THREAD_CNT {
         let loop_id = get_log_id(0, 0, LogLevel::Error, i);
         recvs.push(subscribe!(loop_id).unwrap());

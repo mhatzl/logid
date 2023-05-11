@@ -45,8 +45,6 @@ fn capture_single_logid() {
 #[cfg(feature = "causes")]
 #[test]
 fn capture_single_logid_with_cause() {
-    use logid::event::Event;
-
     let cause_log_id = get_log_id(0, 0, LogLevel::Warn, 1);
     let cause_msg = "Cause log message";
     let log_id = get_log_id(0, 0, LogLevel::Error, 2);
@@ -65,11 +63,7 @@ fn capture_single_logid_with_cause() {
         .unwrap();
 
     set_event!(log_id, msg)
-        .add_cause(Event {
-            crate_name: cause_event.crate_name,
-            entry: cause_event.entry,
-            is_silent: false,
-        })
+        .add_cause(cause_event)
         .finalize();
 
     let event = recv

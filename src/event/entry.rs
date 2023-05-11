@@ -13,7 +13,7 @@ use lsp_types::Diagnostic;
 
 /// Structure to capture all messages set for a log-id.
 #[derive(Debug, Clone, Eq, Default)]
-pub struct Entry {
+pub struct EventEntry {
     /// The hash uniquely identifying this entry.
     ///
     /// **Note:** The hash is computed using the current ThreadId and time when the entry is created, and the origin of the entry.
@@ -48,7 +48,7 @@ pub struct Entry {
     pub(crate) payloads: Vec<serde_json::value::Value>,
 }
 
-impl Entry {
+impl EventEntry {
     /// Create a new [`LogIdEntry`].
     pub(crate) fn new(
         id: LogId,
@@ -57,7 +57,7 @@ impl Entry {
         line_nr: u32,
         module_path: &str,
     ) -> Self {
-        Entry {
+        EventEntry {
             hash: compute_hash(filename, line_nr),
             id,
             level: id.get_level(),
@@ -129,19 +129,19 @@ impl Entry {
     }
 }
 
-impl PartialEq for Entry {
+impl PartialEq for EventEntry {
     fn eq(&self, other: &Self) -> bool {
         self.hash == other.hash
     }
 }
 
-impl Hash for Entry {
+impl Hash for EventEntry {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.hash.hash(state);
     }
 }
 
-impl Display for Entry {
+impl Display for EventEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LogId-Entry")
             .field("id", &self.id)
