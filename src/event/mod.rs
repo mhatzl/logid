@@ -42,7 +42,7 @@ pub trait EventFns {
     /// * `filename` ... Name of the source file where the event is set (Note: use `file!()`)
     /// * `line_nr` ... Line number where the event is set (Note: use `line!()`)
     /// * `module_path` ... Module path where the event is set (Note: use `module_path!()`)
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event;
+    fn set_silent_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event;
 }
 
 /// Traces a [`Entry`] creation.
@@ -78,14 +78,16 @@ impl EventFns for LogId {
     ) -> Event {
         Event {
             entry: create_entry(self, msg, filename, line_nr, module_path),
-            crate_name: Some(crate_name),
+            crate_name,
+            is_silent: false,
         }
     }
 
-    fn set_silent_event(self, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event {
+    fn set_silent_event(self, crate_name: &'static str, msg: &str, filename: &str, line_nr: u32, module_path: &str) -> Event {
         Event {
             entry: create_entry(self, msg, filename, line_nr, module_path),
-            crate_name: None,
+            crate_name,
+            is_silent: true,
         }
     }
 }
@@ -94,9 +96,11 @@ impl EventFns for LogId {
 #[derive(Default, Clone)]
 pub struct Event {
     /// Crate name identifying the [`LogIdMap`] the [`LogIdEvent`] is associated with, or none for silent events.
-    crate_name: Option<&'static str>,
+    crate_name: &'static str,
     /// [`Entry`] for the [`LogIdEvent`] storing all event information.
     pub(crate) entry: Entry,
+    /// Flag to mark an event as silent (`is_silent == true`)
+    pub(crate) is_silent: bool,
 }
 
 impl From<Event> for LogId {
@@ -121,11 +125,11 @@ impl Drop for Event {
     /// Drops the [`LogIdEvent`].
     /// If the event was not created *silently*, it moves the entry into the [`LogIdMap`] associated with the event.
     fn drop(&mut self) {
-        if self.crate_name.is_none() {
+        if self.is_silent {
             return;
         }
         let hash = self.entry.hash;
-        let crate_name = self.crate_name.unwrap();
+        let crate_name = self.crate_name;
 
         if let Err(err) = PUBLISHER.capturer.try_send(EventMsg {
             crate_name,
@@ -219,7 +223,7 @@ impl Event {
 
 fn add_addon_to_entry(id_event: &mut Event, kind: EntryKind) {
     // Note: Silent events are not published, so there is no need to store information either.
-    if id_event.crate_name.is_none() {
+    if id_event.is_silent {
         return;
     }
 

@@ -61,6 +61,7 @@ macro_rules! set_silent_event {
     ($logid:ident, $msg:ident) => {
         $crate::event::EventFns::set_silent_event(
             $crate::logid!($logid),
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
@@ -70,6 +71,7 @@ macro_rules! set_silent_event {
     ($logid:ident, $msg:literal) => {
         $crate::event::EventFns::set_silent_event(
             $crate::logid!($logid),
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
@@ -79,6 +81,7 @@ macro_rules! set_silent_event {
     ($logid:ident, $msg:expr) => {
         $crate::event::EventFns::set_silent_event(
             $crate::logid!($logid),
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
@@ -88,6 +91,7 @@ macro_rules! set_silent_event {
     ($logid:expr, $msg:expr) => {
         $crate::event::EventFns::set_silent_event(
             $crate::logid!($logid),
+            env!("CARGO_PKG_NAME"),
             $msg,
             file!(),
             line!(),
