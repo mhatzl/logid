@@ -1,5 +1,6 @@
 [package]
 name = "logid-derive"
+description = "Provides derive macros for the [logid](https://crates.io/crates/logid) logging framework."
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
