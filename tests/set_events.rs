@@ -396,3 +396,52 @@ fn capture_anonymous_logid() {
         "Set and stored messages are not equal"
     );
 }
+
+#[test]
+fn capture_single_logid_with_paylod() {
+    let log_id = get_log_id(1, 1, LogLevel::Debug, 0);
+    let msg = "Set first log message";
+    let payload = serde_json::json!({
+        "code": 200,
+        "success": true,
+        "payload": {
+            "features": [
+                "serde",
+                "json"
+            ]
+        }
+    });
+
+    let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
+
+    set_event!(log_id, msg)
+        .add_payload(payload.clone())
+        .finalize();
+
+    let event = recv
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+
+    let entry = event.get_entry();
+    assert_eq!(
+        *entry.get_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_level(),
+        LogLevel::Debug,
+        "Set and stored event levels are not equal"
+    );
+
+    assert_eq!(
+        entry.get_payloads().len(),
+        1,
+        "More than one or no trace was set"
+    );
+    let act_payload = entry.get_payloads().last().unwrap();
+    assert_eq!(
+        act_payload, &payload,
+        "Set and stored payloads are not equal"
+    );
+}
