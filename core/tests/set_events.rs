@@ -397,6 +397,7 @@ fn capture_anonymous_logid() {
     );
 }
 
+#[cfg(feature = "payloads")]
 #[test]
 fn capture_single_logid_with_paylod() {
     let log_id = get_log_id(1, 1, LogLevel::Debug, 0);
