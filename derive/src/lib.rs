@@ -1,6 +1,6 @@
-use proc_macro::{TokenStream};
-use syn::{parse_macro_input, DeriveInput};
+use proc_macro::TokenStream;
 use quote::quote_spanned;
+use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(FromLogId)]
 pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
@@ -14,15 +14,15 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
 
             for variant in enum_data.variants {
                 let field_name = variant.ident;
-                let full_field_name = quote_spanned!{span=>
+                let full_field_name = quote_spanned! {span=>
                     #enum_name :: #field_name
                 };
-                fields.push(quote_spanned!{span=>
+                fields.push(quote_spanned! {span=>
                     v if v == logid::logid!(#full_field_name) => #full_field_name,
                 });
             }
 
-            let expanded = quote_spanned!{span=>
+            let expanded = quote_spanned! {span=>
                 impl From<logid::log_id::LogId> for #enum_name {
                     fn from(value: logid::log_id::LogId) -> Self {
                         match value {
@@ -32,9 +32,9 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
                     }
                 }
             };
-        
+
             TokenStream::from(expanded)
-        },
-        _ => panic!("Derive `FromLogId` is only implemented for enumerations."),        
-    } 
+        }
+        _ => panic!("Derive `FromLogId` is only implemented for enumerations."),
+    }
 }

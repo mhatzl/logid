@@ -1,4 +1,7 @@
-use logid::{logid, log_id::{get_log_id, LogLevel}};
+use logid::{
+    log_id::{get_log_id, LogLevel},
+    logid,
+};
 use logid_derive::FromLogId;
 
 #[derive(PartialEq, Eq, Debug, Default, FromLogId)]
@@ -55,4 +58,3 @@ fn enum_roundtrip_conversion() {
         "Wrong conversion to third enum."
     );
 }
-
