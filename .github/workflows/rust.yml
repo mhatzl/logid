@@ -31,7 +31,7 @@ jobs:
   build:
     name: Run Build
     runs-on: ubuntu-latest
-    need: format
+    needs: format
 
     steps:
     - uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
   build-all:
     name: Run Build with all features
     runs-on: ubuntu-latest
-    need: build
+    needs: build
 
     steps:
     - uses: actions/checkout@v2
@@ -51,7 +51,7 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    need: build-all
+    needs: build-all
     
     steps:
     - uses: actions/checkout@v2
