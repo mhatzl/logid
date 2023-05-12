@@ -6,7 +6,10 @@ use std::{
 
 use crate::log_id::{LogId, LogIdParts, LogLevel};
 
-use super::{origin::Origin, Event};
+use super::origin::Origin;
+
+#[cfg(feature = "causes")]
+use super::Event;
 
 #[cfg(feature = "diagnostics")]
 use lsp_types::Diagnostic;
@@ -115,19 +118,24 @@ impl EventEntry {
     pub fn get_origin(&self) -> &Origin {
         &self.origin
     }
+
     /// Get the name of the span that was current when the log-id event was set
+    #[cfg(feature = "spans")]
     pub fn get_span(&self) -> &Option<tracing::span::Span> {
         &self.span
     }
 
+    #[cfg(feature = "causes")]
     pub fn get_causes(&self) -> &Vec<Event> {
         &self.causes
     }
 
+    #[cfg(feature = "diagnostics")]
     pub fn get_diagnostics(&self) -> &Vec<Diagnostic> {
         &self.diagnostics
     }
 
+    #[cfg(feature = "payloads")]
     pub fn get_payloads(&self) -> &Vec<serde_json::value::Value> {
         &self.payloads
     }
