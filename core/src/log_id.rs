@@ -146,9 +146,73 @@ pub const fn get_log_id(main_grp: u8, sub_grp: u8, log_level: LogLevel, local_nr
         + (local_nr as u16)) as LogId
 }
 
+/// Returns a [`LogId`] with [`LogLevel::Error`].
+pub const fn get_err_id(main_grp: u8, sub_grp: u8, local_nr: u8) -> LogId {
+    get_log_id(main_grp, sub_grp, LogLevel::Error, local_nr)
+}
+
+/// Returns a [`LogId`] with [`LogLevel::Warn`].
+pub const fn get_warn_id(main_grp: u8, sub_grp: u8, local_nr: u8) -> LogId {
+    get_log_id(main_grp, sub_grp, LogLevel::Warn, local_nr)
+}
+
+/// Returns a [`LogId`] with [`LogLevel::Info`].
+pub const fn get_info_id(main_grp: u8, sub_grp: u8, local_nr: u8) -> LogId {
+    get_log_id(main_grp, sub_grp, LogLevel::Info, local_nr)
+}
+
+/// Returns a [`LogId`] with [`LogLevel::Debug`].
+pub const fn get_dbg_id(main_grp: u8, sub_grp: u8, local_nr: u8) -> LogId {
+    get_log_id(main_grp, sub_grp, LogLevel::Debug, local_nr)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{get_log_id, LogId, LogIdParts, LogLevel};
+    use super::*;
+
+    #[test]
+    fn create_err_id() {
+        let log_id = get_err_id(0, 0, 0);
+
+        assert_eq!(
+            log_id.get_level(),
+            LogLevel::Error,
+            "Log-id levels are not equal"
+        );
+    }
+
+    #[test]
+    fn create_warn_id() {
+        let log_id = get_warn_id(0, 0, 0);
+
+        assert_eq!(
+            log_id.get_level(),
+            LogLevel::Warn,
+            "Log-id levels are not equal"
+        );
+    }
+
+    #[test]
+    fn create_info_id() {
+        let log_id = get_info_id(0, 0, 0);
+
+        assert_eq!(
+            log_id.get_level(),
+            LogLevel::Info,
+            "Log-id levels are not equal"
+        );
+    }
+
+    #[test]
+    fn create_dbg_id() {
+        let log_id = get_dbg_id(0, 0, 1);
+
+        assert_eq!(
+            log_id.get_level(),
+            LogLevel::Debug,
+            "Log-id levels are not equal"
+        );
+    }
 
     #[test]
     fn create_log_id_with_error() {
