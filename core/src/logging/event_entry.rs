@@ -7,7 +7,7 @@ pub struct LogEventEntry {
     /// The event id of this entry
     pub(crate) event_id: LogId,
     /// The unique id of this entry
-    pub(crate) entry_id: uuid::Uuid,
+    pub(crate) entry_id: evident::uuid::Uuid,
     /// The main message set when creating the log-id entry
     pub(crate) msg: String,
     /// List of additional warnings for this log-id entry
@@ -27,7 +27,7 @@ pub struct LogEventEntry {
 
     /// List of EventEntry ids that caused this log-id entry
     #[cfg(feature = "causes")]
-    pub(crate) causes: Vec<uuid::Uuid>,
+    pub(crate) causes: Vec<evident::uuid::Uuid>,
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
@@ -49,7 +49,7 @@ impl evident::event::entry::EventEntry<LogId> for LogEventEntry {
     ) -> Self {
         LogEventEntry {
             event_id,
-            entry_id: uuid::Uuid::new_v4(),
+            entry_id: evident::uuid::Uuid::new_v4(),
             msg: msg.to_string(),
             warnings: Vec::new(),
             infos: Vec::new(),
@@ -79,7 +79,7 @@ impl evident::event::entry::EventEntry<LogId> for LogEventEntry {
         &self.event_id
     }
 
-    fn get_entry_id(&self) -> uuid::Uuid {
+    fn get_entry_id(&self) -> evident::uuid::Uuid {
         self.entry_id
     }
 
@@ -133,7 +133,7 @@ impl LogEventEntry {
     }
 
     #[cfg(feature = "causes")]
-    pub fn get_causes(&self) -> &Vec<uuid::Uuid> {
+    pub fn get_causes(&self) -> &Vec<evident::uuid::Uuid> {
         &self.causes
     }
 
@@ -156,7 +156,7 @@ pub(crate) enum EntryKind {
     Trace(String),
 
     #[cfg(feature = "causes")]
-    Cause(uuid::Uuid),
+    Cause(evident::uuid::Uuid),
 
     #[cfg(feature = "diagnostics")]
     Diagnostic(lsp_types::Diagnostic),

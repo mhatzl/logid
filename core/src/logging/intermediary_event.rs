@@ -88,7 +88,7 @@ impl IntermediaryLogEvent {
 
     /// Add an [`EventEntry`] id that caused this log-id event
     #[cfg(feature = "causes")]
-    pub fn add_cause(mut self, causing_entry_id: uuid::Uuid) -> Self {
+    pub fn add_cause(mut self, causing_entry_id: evident::uuid::Uuid) -> Self {
         add_addon_to_entry(&mut self, EntryKind::Cause(causing_entry_id));
         self
     }
