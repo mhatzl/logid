@@ -1,5 +1,9 @@
 use evident::event::{entry::EventEntry, origin::Origin};
-use logid::{log_id::LogLevel, logging::LOGGER, set_event};
+use logid::{
+    log_id::{LogId, LogLevel},
+    logging::LOGGER,
+    set_event,
+};
 use logid_derive::ErrLogId;
 
 #[derive(Debug, Default, ErrLogId, PartialEq)]
@@ -83,6 +87,49 @@ fn set_event_for_err_result() {
         *entry.get_msg(),
         msg,
         "Set and stored messages are not equal"
+    );
+}
+
+#[test]
+fn capture_logid_with_custom_identifier() {
+    let msg = "Set log message";
+    let identifier = "log_id";
+    let log_id = LogId::new(
+        env!("CARGO_PKG_NAME"),
+        module_path!(),
+        identifier,
+        LogLevel::Trace,
+    );
+
+    let recv = LOGGER.subscribe(log_id).unwrap();
+
+    set_event!(log_id, msg).finalize();
+
+    let event = recv
+        .get_receiver()
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+
+    let entry = event.get_entry();
+    assert_eq!(
+        *entry.get_event_id(),
+        log_id,
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        entry.get_level(),
+        LogLevel::Trace,
+        "Set and stored event levels are not equal"
+    );
+    assert_eq!(
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
+    );
+    assert_eq!(
+        entry.get_event_id().get_identifier(),
+        identifier,
+        "Set and stored identifiers are not equal"
     );
 }
 
@@ -274,35 +321,3 @@ fn set_event_for_err_result() {
 //         "Span names are not equal"
 //     );
 // }
-
-
-// #[test]
-// fn capture_anonymous_logid() {
-//     let msg = "Set anonymous log message";
-
-//     let recv = subscribe!(ANONYMOUS_LOG_ID).unwrap();
-
-//     set_event!(ANONYMOUS_LOG_ID, msg).finalize();
-
-//     let event = recv
-//         .recv_timeout(std::time::Duration::from_millis(10))
-//         .unwrap();
-
-//     let entry = event.get_entry();
-//     assert_eq!(
-//         *entry.get_id(),
-//         ANONYMOUS_LOG_ID,
-//         "Set and stored log-ids are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_level(),
-//         LogLevel::Debug,
-//         "Set and stored event levels are not equal"
-//     );
-//     assert_eq!(
-//         *entry.get_msg(),
-//         msg,
-//         "Set and stored messages are not equal"
-//     );
-// }
-

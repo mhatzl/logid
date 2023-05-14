@@ -54,3 +54,56 @@ pub enum LogLevel {
     Debug,
     Trace,
 }
+
+/// Macro to create a [`LogId`] with a custom identifier and [`LogLevel`].
+///
+/// **Note:** The identifier must be a string literal.
+///
+/// ## Usage
+///
+/// ```
+/// use logid::{new_log_id, log_id::LogLevel};
+///
+/// let id = new_log_id!("custom_ident", LogLevel::Debug);
+/// ```
+#[macro_export]
+macro_rules! new_log_id {
+    ($identifier:literal, $log_level:expr) => {
+        $crate::log_id::LogId::new(
+            env!("CARGO_PKG_NAME"),
+            module_path!(),
+            $identifier,
+            $log_level,
+        )
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn create_log_id_with_macro() {
+        let log_id = new_log_id!("custom_ident", LogLevel::Debug);
+
+        assert_eq!(
+            log_id.crate_name,
+            env!("CARGO_PKG_NAME"),
+            "Crate name was not set correctly using `log_id!()` macro."
+        );
+        assert_eq!(
+            log_id.module_path,
+            module_path!(),
+            "Module path was not set correctly using `log_id!()` macro."
+        );
+        assert_eq!(
+            log_id.identifier, "custom_ident",
+            "Identifier was not set correctly using `log_id!()` macro."
+        );
+        assert_eq!(
+            log_id.log_level,
+            LogLevel::Debug,
+            "Log level was not set correctly using `log_id!()` macro."
+        );
+    }
+}
