@@ -78,6 +78,12 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
                         }
                     }
                 }
+
+                impl From<logid::logging::intermediary_event::IntermediaryLogEvent> for #enum_name {
+                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent) -> Self {
+                        value.finalize().into()
+                    }
+                }
             };
 
             let from_enum = quote_spanned! {span=>
