@@ -52,4 +52,5 @@ pub enum LogLevel {
     Info,
     #[default]
     Debug,
+    Trace,
 }
