@@ -38,8 +38,6 @@ pub struct LogEventEntry {
     pub(crate) payloads: Vec<serde_json::value::Value>,
 }
 
-impl Eq for LogEventEntry {}
-
 impl evident::event::entry::EventEntry<LogId> for LogEventEntry {
     fn new(
         event_id: LogId,

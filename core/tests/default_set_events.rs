@@ -17,7 +17,7 @@ enum TestErrId {
 fn capture_single_logid() {
     let msg = "Set first log message";
 
-    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
+    let recv = LOGGER.subscribe(TestErrId::One).unwrap();
 
     set_event!(TestErrId::One, msg).finalize();
 
@@ -62,7 +62,7 @@ fn failing_fn(msg: &str) -> Result<(), TestErrId> {
 fn set_event_for_err_result() {
     let msg = "Set first log message";
 
-    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
+    let recv = LOGGER.subscribe(TestErrId::One).unwrap();
 
     let res = failing_fn(msg);
 

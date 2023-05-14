@@ -30,7 +30,7 @@ mod diagnostic_tests {
             ..Default::default()
         };
 
-        let recv = LOGGER.subscribe(TestWarnId::One.into()).unwrap();
+        let recv = LOGGER.subscribe(TestWarnId::One).unwrap();
 
         set_event!(TestWarnId::One, msg)
             .add_diagnostic(diagnostics.clone())

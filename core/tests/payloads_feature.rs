@@ -25,7 +25,7 @@ mod payload_tests {
             }
         });
 
-        let recv = LOGGER.subscribe(TestTraceId::One.into()).unwrap();
+        let recv = LOGGER.subscribe(TestTraceId::One).unwrap();
 
         set_event!(TestTraceId::One, msg)
             .add_payload(payload.clone())
