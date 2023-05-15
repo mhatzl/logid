@@ -19,7 +19,6 @@ serde_json = { version = "1.0", optional = true }
 
 [features]
 diagnostics = ["lsp-types"]
-causes = []
 payloads = ["serde_json"]
 spans = ["tracing"]
 

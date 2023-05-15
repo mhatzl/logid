@@ -31,4 +31,8 @@
 //! ~~~
 
 pub mod log_id;
+pub mod logged_result;
 pub mod logging;
+
+// Re-exports
+pub use evident;

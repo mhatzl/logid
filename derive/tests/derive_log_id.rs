@@ -33,7 +33,6 @@ fn enum_into_log_id() {
         module_path!(),
         "Derive set wrong module path."
     );
-    // Note: Spaces between identifiers are created by the derive macro.
     assert_eq!(
         first_enum_id.get_identifier(),
         "LogIdEnum::First",

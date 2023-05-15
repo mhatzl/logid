@@ -44,6 +44,16 @@ impl LogId {
     }
 }
 
+impl std::fmt::Display for LogId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {}::{}::{}",
+            self.log_level, self.crate_name, self.module_path, self.identifier
+        )
+    }
+}
+
 /// Log level a [`LogId`] may represent.
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
 pub enum LogLevel {
@@ -53,6 +63,20 @@ pub enum LogLevel {
     #[default]
     Debug,
     Trace,
+}
+
+impl std::fmt::Display for LogLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            LogLevel::Error => "ERR",
+            LogLevel::Warn => "WARN",
+            LogLevel::Info => "INFO",
+            LogLevel::Debug => "DEBUG",
+            LogLevel::Trace => "TRACE",
+        };
+
+        write!(f, "{s}")
+    }
 }
 
 /// Macro to create a [`LogId`] with a custom identifier and [`LogLevel`].

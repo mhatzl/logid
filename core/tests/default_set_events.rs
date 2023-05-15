@@ -133,7 +133,6 @@ fn capture_logid_with_custom_identifier() {
     );
 }
 
-// #[cfg(feature = "causes")]
 // #[test]
 // fn capture_single_logid_with_cause() {
 //     let cause_log_id = get_log_id(0, 0, LogLevel::Warn, 1);

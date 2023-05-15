@@ -1,4 +1,4 @@
-use evident::event::entry::EventEntry;
+use evident::event::{entry::EventEntry, origin::Origin};
 
 use crate::log_id::LogId;
 
@@ -14,16 +14,9 @@ pub struct IntermediaryLogEvent {
 impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>
     for IntermediaryLogEvent
 {
-    fn new(
-        event_id: LogId,
-        msg: &str,
-        crate_name: &'static str,
-        module_path: &'static str,
-        filename: &'static str,
-        line_nr: u32,
-    ) -> Self {
+    fn new(event_id: LogId, msg: &str, origin: Origin) -> Self {
         IntermediaryLogEvent {
-            entry: LogEventEntry::new(event_id, msg, crate_name, module_path, filename, line_nr),
+            entry: LogEventEntry::new(event_id, msg, origin),
         }
     }
 
@@ -86,10 +79,12 @@ impl IntermediaryLogEvent {
         self
     }
 
-    /// Add an [`EventEntry`] id that caused this log-id event
-    #[cfg(feature = "causes")]
-    pub fn add_cause(mut self, causing_entry_id: evident::uuid::Uuid) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Cause(causing_entry_id));
+    /// Add a [`CapturedEvent`] that caused this log-id event
+    pub fn add_cause(
+        mut self,
+        causing_event: crate::evident::event::intermediary::CapturedEvent<LogId>,
+    ) -> Self {
+        add_addon_to_entry(&mut self, EntryKind::Cause(causing_event));
         self
     }
 
@@ -114,9 +109,7 @@ fn add_addon_to_entry(id_event: &mut IntermediaryLogEvent, kind: EntryKind) {
         EntryKind::Info(msg) => id_event.entry.infos.push(msg),
         EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
         EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
-
-        #[cfg(feature = "causes")]
-        EntryKind::Cause(entry) => id_event.entry.causes.push(entry),
+        EntryKind::Cause(event) => id_event.entry.causes.push(event),
 
         #[cfg(feature = "diagnostics")]
         EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
