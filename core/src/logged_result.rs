@@ -69,11 +69,18 @@ macro_rules! log_map_err {
         $logged_result()
             .map_err(|e| e.log_into($outer_enum::default(), $crate::evident::this_origin!()))
     };
+    ($logged_result:ident() -> $outer_enum:ident::$enum_variant:ident) => {
+        $logged_result()
+            .map_err(|e| e.log_into($outer_enum::$enum_variant, $crate::evident::this_origin!()))
+    };
 }
 
 #[macro_export]
 macro_rules! map_err {
     ($logged_result:ident() -> $outer_enum:ident) => {
         $logged_result().map_err(|e| e.silent_into($outer_enum::default()))
+    };
+    ($logged_result:ident() -> $outer_enum:ident::$enum_variant:ident) => {
+        $logged_result().map_err(|e| e.silent_into($outer_enum::$enum_variant))
     };
 }
