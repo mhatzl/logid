@@ -4,7 +4,7 @@ mod diagnostic_tests {
     use logid_derive::WarnLogId;
     use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
-    #[derive(Debug, Default, WarnLogId)]
+    #[derive(Debug, Default, WarnLogId, Clone)]
     enum TestWarnId {
         #[default]
         One,

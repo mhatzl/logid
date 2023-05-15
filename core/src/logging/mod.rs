@@ -9,7 +9,7 @@ evident::create_static_publisher!(
     pub LOGGER,
     LogId,
     LogEventEntry,
-    IntermediaryLogEvent,
+    IntermediaryLogEvent<V>,
     CAPTURE_CHANNEL_BOUND = 1000,
     SUBSCRIPTION_CHANNEL_BOUND = 500,
     non_blocking = true
@@ -17,5 +17,5 @@ evident::create_static_publisher!(
 evident::create_set_event_macro!(
     logid::log_id::LogId,
     logid::logging::event_entry::LogEventEntry,
-    logid::logging::intermediary_event::IntermediaryLogEvent
+    logid::logging::intermediary_event::IntermediaryLogEvent<_>
 );

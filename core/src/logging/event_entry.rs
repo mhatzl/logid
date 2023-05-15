@@ -19,8 +19,6 @@ pub struct LogEventEntry {
     pub(crate) traces: Vec<String>,
     /// Code position where the log-id entry was created
     pub(crate) origin: Origin,
-    /// List of captured events that caused this log-id entry
-    pub(crate) causes: Vec<crate::evident::event::intermediary::CapturedEvent<LogId>>,
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
@@ -42,7 +40,6 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
             debugs: Vec::new(),
             traces: Vec::new(),
             origin,
-            causes: Vec::new(),
 
             #[cfg(feature = "diagnostics")]
             diagnostics: Vec::new(),
@@ -107,10 +104,6 @@ impl LogEventEntry {
         &self.origin
     }
 
-    pub fn get_causes(&self) -> &Vec<crate::evident::event::intermediary::CapturedEvent<LogId>> {
-        &self.causes
-    }
-
     #[cfg(feature = "diagnostics")]
     pub fn get_diagnostics(&self) -> &Vec<lsp_types::Diagnostic> {
         &self.diagnostics
@@ -128,7 +121,6 @@ pub(crate) enum EntryKind {
     Info(String),
     Debug(String),
     Trace(String),
-    Cause(crate::evident::event::intermediary::CapturedEvent<LogId>),
 
     #[cfg(feature = "diagnostics")]
     Diagnostic(lsp_types::Diagnostic),

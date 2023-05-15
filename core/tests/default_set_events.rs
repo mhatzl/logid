@@ -6,7 +6,7 @@ use logid::{
 };
 use logid_derive::ErrLogId;
 
-#[derive(Debug, Default, ErrLogId, PartialEq)]
+#[derive(Debug, Default, ErrLogId, PartialEq, Clone)]
 enum TestErrId {
     #[default]
     One,
@@ -290,33 +290,4 @@ fn capture_logid_with_custom_identifier() {
 //     );
 //     let act_trace = entry.get_traces().last().unwrap();
 //     assert_eq!(act_trace, trace, "Set and stored messages are not equal");
-// }
-
-// #[cfg(feature = "spans")]
-// #[test]
-// fn logid_with_span() {
-//     // Note: Tracing subscribers are responsible for span handling => simple subscriber needed for span testing
-//     tracing_subscriber::fmt::init();
-//     const SPAN_NAME: &str = "mySpan";
-
-//     let log_id = get_log_id(0, 0, LogLevel::Info, 2);
-//     let msg = "Set first log message";
-
-//     let recv = publisher::subscribe(log_id, env!("CARGO_PKG_NAME")).unwrap();
-
-//     let span = tracing::span!(tracing::Level::ERROR, SPAN_NAME);
-//     span.in_scope(|| {
-//         set_event!(log_id, msg);
-//     });
-
-//     let event = recv
-//         .recv_timeout(std::time::Duration::from_millis(10))
-//         .unwrap();
-
-//     let entry = event.get_entry();
-//     assert_eq!(
-//         entry.get_span().as_ref().unwrap().metadata().unwrap(),
-//         span.metadata().unwrap(),
-//         "Span names are not equal"
-//     );
 // }

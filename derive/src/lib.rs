@@ -79,8 +79,8 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
                     }
                 }
 
-                impl From<logid::logging::intermediary_event::IntermediaryLogEvent> for #enum_name {
-                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent) -> Self {
+                impl<V: Into<logid::log_id::LogId> + Clone> From<logid::logging::intermediary_event::IntermediaryLogEvent<V>> for #enum_name {
+                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent<V>) -> Self {
                         value.finalize().into_event_id().into()
                     }
                 }

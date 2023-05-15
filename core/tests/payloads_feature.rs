@@ -4,7 +4,7 @@ mod payload_tests {
     use logid::{log_id::LogLevel, logging::LOGGER, set_event};
     use logid_derive::TraceLogId;
 
-    #[derive(Debug, Default, TraceLogId, PartialEq)]
+    #[derive(Debug, Default, TraceLogId, PartialEq, Clone)]
     enum TestTraceId {
         #[default]
         One,

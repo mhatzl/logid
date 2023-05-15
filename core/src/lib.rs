@@ -13,7 +13,7 @@
 //! use logid::{log_id::{LogId, LogLevel}, set_event};
 //! use logid_derive::ErrLogId;
 //!
-//! #[derive(Default, ErrLogId)]
+//! #[derive(Default, ErrLogId, Clone)]
 //! enum CrateErrors {
 //!   SomeError,
 //!   #[default]

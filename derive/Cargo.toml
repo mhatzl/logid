@@ -16,3 +16,10 @@ proc-macro = true
 logid = { path = "../core", version = "0.7" }
 syn = { version = "2.0", features = ["derive"] }
 quote = "1.0"
+serde_json = { version = "1.0", optional = true }
+
+[features]
+payloads = ["serde_json"]
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
