@@ -10,29 +10,31 @@
 //! **Usage:**
 //!
 //! ~~~
-//! use logid::{log_id::{LogId, LogLevel}, set_event};
+//! use logid::{log_id::{LogId, LogLevel}, err};
 //! use logid_derive::ErrLogId;
+//! use thiserror::Error;
 //!
-//! #[derive(Default, ErrLogId, Clone)]
+//! #[derive(Debug, Default, Clone, ErrLogId, Error)]
 //! enum CrateErrors {
-//!   SomeError,
-//!   #[default]
-//!   InternalError,
+//!     #[error("`SomeError` description.")]
+//!     SomeError,
+//!
+//!     #[error("`InternalError` description.")]
+//!     #[default]
+//!     InternalError,
 //! }
 //!
 //! fn my_func() -> Result<(), CrateErrors> {
-//!   // some code ...
+//!     // some code ...
 //!
-//!   // on error
-//!   Err(set_event!(CrateErrors::SomeError, "Some error message")
-//!       .add_debug("Add debug information").into()
-//!   )
+//!     // on error
+//!     err!(CrateErrors::SomeError)
 //! }
 //! ~~~
 
 pub mod log_id;
-pub mod logged_result;
 pub mod logging;
+pub mod set_macros;
 
 // Re-exports
 pub use evident;

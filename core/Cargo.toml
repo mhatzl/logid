@@ -23,3 +23,4 @@ payloads = ["serde_json"]
 [dev-dependencies]
 rayon = "1.7"
 logid-derive = { path = "../derive", version = "0.7" }
+thiserror = "1.0"

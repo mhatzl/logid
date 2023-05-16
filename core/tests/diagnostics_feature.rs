@@ -1,13 +1,16 @@
 #[cfg(feature = "diagnostics")]
 mod diagnostic_tests {
-    use logid::{logging::LOGGER, set_event};
+    use logid::{
+        intermediary_log,
+        logging::{event_addons::LogEventAddons, LOGGER},
+    };
     use logid_derive::WarnLogId;
     use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
     #[derive(Debug, Default, WarnLogId, Clone)]
     enum TestWarnId {
-        #[default]
         One,
+        #[default]
         Two,
     }
 
@@ -30,9 +33,9 @@ mod diagnostic_tests {
             ..Default::default()
         };
 
-        let recv = LOGGER.subscribe(TestWarnId::One).unwrap();
+        let recv = LOGGER.subscribe(TestWarnId::One.into()).unwrap();
 
-        set_event!(TestWarnId::One, msg)
+        intermediary_log!(TestWarnId::One, msg)
             .add_diagnostic(diagnostics.clone())
             .finalize();
 

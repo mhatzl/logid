@@ -1,15 +1,20 @@
 use evident::event::{entry::EventEntry, origin::Origin};
 use logid::{
+    err, log,
     log_id::{LogId, LogLevel},
     logging::LOGGER,
     set_event,
 };
 use logid_derive::ErrLogId;
+use thiserror::Error;
 
-#[derive(Debug, Default, ErrLogId, PartialEq, Clone)]
+#[derive(Debug, Default, ErrLogId, PartialEq, Clone, Error)]
 enum TestErrId {
-    #[default]
+    #[error("Error on `TestErrId::One`")]
     One,
+
+    #[error("Error on `TestErrId::Two`")]
+    #[default]
     Two,
 }
 
@@ -17,9 +22,9 @@ enum TestErrId {
 fn capture_single_logid() {
     let msg = "Set first log message";
 
-    let recv = LOGGER.subscribe(TestErrId::One).unwrap();
+    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
 
-    set_event!(TestErrId::One, msg).finalize();
+    log!(TestErrId::One, msg);
 
     let event = recv
         .get_receiver()
@@ -55,14 +60,14 @@ fn capture_single_logid() {
 }
 
 fn failing_fn(msg: &str) -> Result<(), TestErrId> {
-    Err(set_event!(TestErrId::One, msg).into())
+    err!(TestErrId::One, msg)
 }
 
 #[test]
 fn set_event_for_err_result() {
     let msg = "Set first log message";
 
-    let recv = LOGGER.subscribe(TestErrId::One).unwrap();
+    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
 
     let res = failing_fn(msg);
 

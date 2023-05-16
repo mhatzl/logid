@@ -1,10 +1,14 @@
 #[cfg(feature = "payloads")]
 mod payload_tests {
     use evident::event::entry::EventEntry;
-    use logid::{log_id::LogLevel, logging::LOGGER, set_event};
-    use logid_derive::TraceLogId;
+    use logid::{
+        log_id::LogLevel,
+        logging::{event_addons::LogEventAddons, LOGGER},
+        set_event,
+    };
+    use logid_derive::{FromLogId, TraceLogId};
 
-    #[derive(Debug, Default, TraceLogId, PartialEq, Clone)]
+    #[derive(Debug, Default, PartialEq, Clone, TraceLogId, FromLogId)]
     enum TestTraceId {
         #[default]
         One,
@@ -25,11 +29,9 @@ mod payload_tests {
             }
         });
 
-        let recv = LOGGER.subscribe(TestTraceId::One).unwrap();
+        let recv = LOGGER.subscribe(TestTraceId::One.into()).unwrap();
 
-        set_event!(TestTraceId::One, msg)
-            .add_payload(payload.clone())
-            .finalize();
+        set_event!(TestTraceId::One.into(), msg).add_payload(payload.clone());
 
         let event = recv
             .get_receiver()

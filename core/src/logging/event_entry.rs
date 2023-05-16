@@ -9,8 +9,6 @@ pub struct LogEventEntry {
     pub(crate) entry_id: crate::evident::uuid::Uuid,
     /// The main message set when creating the log-id entry
     pub(crate) msg: String,
-    /// List of additional warnings for this log-id entry
-    pub(crate) warnings: Vec<String>,
     /// List of additional informations for this log-id entry
     pub(crate) infos: Vec<String>,
     /// List of additional debug informations for this log-id entry
@@ -35,7 +33,6 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
             event_id,
             entry_id: crate::evident::uuid::Uuid::new_v4(),
             msg: msg.to_string(),
-            warnings: Vec::new(),
             infos: Vec::new(),
             debugs: Vec::new(),
             traces: Vec::new(),
@@ -83,10 +80,12 @@ impl LogEventEntry {
     pub fn get_msg(&self) -> &String {
         &self.msg
     }
-    /// Get the list of additional warnings for this log-id entry
-    pub fn get_warnings(&self) -> &Vec<String> {
-        &self.warnings
+
+    /// Get the code position where the log-id entry was created
+    pub fn get_origin(&self) -> &Origin {
+        &self.origin
     }
+
     /// Get the list of additional informations for this log-id entry
     pub fn get_infos(&self) -> &Vec<String> {
         &self.infos
@@ -98,10 +97,6 @@ impl LogEventEntry {
     /// Get the list of additional trace information for this log-id entry
     pub fn get_traces(&self) -> &Vec<String> {
         &self.traces
-    }
-    /// Get the code position where the log-id entry was created
-    pub fn get_origin(&self) -> &Origin {
-        &self.origin
     }
 
     #[cfg(feature = "diagnostics")]
@@ -117,7 +112,6 @@ impl LogEventEntry {
 
 /// [`EntryKind`] defines the information kind to be added to an [`EventEntry`].
 pub(crate) enum EntryKind {
-    Warning(String),
     Info(String),
     Debug(String),
     Trace(String),

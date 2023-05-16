@@ -1,6 +1,6 @@
 use logid::log_id::LogLevel;
 use proc_macro::TokenStream;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(ErrLogId)]
@@ -30,22 +30,89 @@ pub fn derive_trace_log_id(input: TokenStream) -> TokenStream {
 
 fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    let ident_name = input.ident;
+
+    let log_token = log_level_as_tokenstream(log_level);
+
+    match input.data {
+        syn::Data::Enum(enum_data) => {
+            let span = ident_name.span();
+
+            let mut field_identifiers = Vec::new();
+
+            for variant in enum_data.variants {
+                let field_name = variant.ident;
+                let full_field_name = quote_spanned! {span=>
+                    #ident_name::#field_name
+                };
+                let full_field_name_str =
+                    syn::LitStr::new(&full_field_name.to_string().replace(' ', ""), span);
+                field_identifiers.push(quote_spanned! {span=>
+                    #full_field_name => #full_field_name_str,
+                });
+            }
+
+            let from_enum = quote_spanned! {span=>
+                impl From<#ident_name> for logid::log_id::LogId {
+                    fn from(value: #ident_name) -> Self {
+                        let field_name = match value {
+                            #(#field_identifiers)*
+                        };
+
+                        logid::log_id::LogId::new(
+                            env!("CARGO_PKG_NAME"),
+                            module_path!(),
+                            field_name,
+                            #log_token,
+                        )
+                    }
+                }
+            };
+
+            TokenStream::from(from_enum)
+        }
+        syn::Data::Struct(struct_data) => {
+            let span = struct_data.struct_token.span;
+            from_struct_or_union(ident_name, log_token, span)
+        }
+        syn::Data::Union(union_data) => {
+            let span = union_data.union_token.span;
+            from_struct_or_union(ident_name, log_token, span)
+        }
+    }
+}
+
+fn from_struct_or_union(
+    ident_name: proc_macro2::Ident,
+    log_token: proc_macro2::TokenStream,
+    span: proc_macro2::Span,
+) -> TokenStream {
+    let from = quote_spanned! {span=>
+        impl From<#ident_name> for logid::log_id::LogId {
+            fn from(value: #ident_name) -> Self {
+                logid::log_id::LogId::new(
+                    env!("CARGO_PKG_NAME"),
+                    module_path!(),
+                    #ident_name,
+                    #log_token,
+                )
+            }
+        }
+    };
+
+    TokenStream::from(from)
+}
+
+#[proc_macro_derive(FromLogId)]
+pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
     let enum_name = input.ident;
 
     match input.data {
         syn::Data::Enum(enum_data) => {
             let span = enum_name.span();
 
-            let log = match log_level {
-                LogLevel::Error => quote_spanned! {span=> logid::log_id::LogLevel::Error },
-                LogLevel::Warn => quote_spanned! {span=> logid::log_id::LogLevel::Warn },
-                LogLevel::Info => quote_spanned! {span=> logid::log_id::LogLevel::Info },
-                LogLevel::Debug => quote_spanned! {span=> logid::log_id::LogLevel::Debug },
-                LogLevel::Trace => quote_spanned! {span=> logid::log_id::LogLevel::Trace },
-            };
-
             let mut from_fields = Vec::new();
-            let mut field_identifiers = Vec::new();
 
             for variant in enum_data.variants {
                 let field_name = variant.ident;
@@ -54,19 +121,15 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
                 };
                 let full_field_name_str =
                     syn::LitStr::new(&full_field_name.to_string().replace(' ', ""), span);
-                field_identifiers.push(quote_spanned! {span=>
-                    #full_field_name => #full_field_name_str,
-                });
                 from_fields.push(quote_spanned! {span=>
                     v if v == #full_field_name_str => #full_field_name,
                 });
             }
 
-            let from_event_id = quote_spanned! {span=>
+            let from_log_id = quote_spanned! {span=>
                 impl From<logid::log_id::LogId> for #enum_name {
                     fn from(value: logid::log_id::LogId) -> Self {
-                        if value.get_log_level() != #log
-                            || value.get_crate_name() != env!("CARGO_PKG_NAME")
+                        if value.get_crate_name() != env!("CARGO_PKG_NAME")
                             || value.get_module_path() != module_path!() {
 
                             return Self::default();
@@ -79,38 +142,25 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
                     }
                 }
 
-                impl<V: Into<logid::log_id::LogId> + Clone> From<logid::logging::intermediary_event::IntermediaryLogEvent<V>> for #enum_name {
-                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent<V>) -> Self {
+                impl From<logid::logging::intermediary_event::IntermediaryLogEvent> for #enum_name {
+                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent) -> Self {
                         value.finalize().into_event_id().into()
                     }
                 }
             };
 
-            let from_enum = quote_spanned! {span=>
-                impl From<#enum_name> for logid::log_id::LogId {
-                    fn from(value: #enum_name) -> Self {
-                        let field_name = match value {
-                            #(#field_identifiers)*
-                        };
-
-                        logid::log_id::LogId::new(
-                            env!("CARGO_PKG_NAME"),
-                            module_path!(),
-                            field_name,
-                            #log,
-                        )
-                    }
-                }
-            };
-
-            let froms = quote_spanned! {span=>
-                #from_event_id
-
-                #from_enum
-            };
-
-            TokenStream::from(froms)
+            TokenStream::from(from_log_id)
         }
-        _ => panic!("Derive `(Err|Warn|Info|Dbg)LogId` is only implemented for enumerations."),
+        _ => panic!("Derive `FromLogId` is only implemented for enumerations where no item has fields (e.g. SomeEnum::Item(Field) is **not** allowed)."),
+    }
+}
+
+fn log_level_as_tokenstream(level: LogLevel) -> proc_macro2::TokenStream {
+    match level {
+        LogLevel::Error => quote! { logid::log_id::LogLevel::Error },
+        LogLevel::Warn => quote! { logid::log_id::LogLevel::Warn },
+        LogLevel::Info => quote! { logid::log_id::LogLevel::Info },
+        LogLevel::Debug => quote! { logid::log_id::LogLevel::Debug },
+        LogLevel::Trace => quote! { logid::log_id::LogLevel::Trace },
     }
 }

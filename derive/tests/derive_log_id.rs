@@ -1,7 +1,7 @@
 use logid::log_id::{LogId, LogLevel};
-use logid_derive::{DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId};
+use logid_derive::{DbgLogId, ErrLogId, FromLogId, InfoLogId, TraceLogId, WarnLogId};
 
-#[derive(PartialEq, Eq, Debug, Default, ErrLogId)]
+#[derive(PartialEq, Eq, Debug, Default, ErrLogId, FromLogId)]
 enum LogIdEnum {
     #[default]
     First,
@@ -9,7 +9,7 @@ enum LogIdEnum {
     Third,
 }
 
-#[derive(PartialEq, Eq, Debug, Default, ErrLogId)]
+#[derive(PartialEq, Eq, Debug, Default, ErrLogId, FromLogId)]
 enum OtherLogIdEnum {
     One,
     Two,
@@ -93,7 +93,6 @@ enum WarnLogId {
     #[default]
     First,
     Second,
-    Third,
 }
 
 #[test]
@@ -118,17 +117,16 @@ enum InfoLogId {
     #[default]
     First,
     Second,
-    Third,
 }
 
 #[test]
 fn enum_as_info_log_id() {
-    let info_id: LogId = InfoLogId::Third.into();
+    let info_id: LogId = InfoLogId::Second.into();
 
     assert_eq!(
         info_id.get_identifier(),
-        "InfoLogId::Third",
-        "Derive set wrong identifier name for third variant.",
+        "InfoLogId::Second",
+        "Derive set wrong identifier name for second variant.",
     );
 
     assert_eq!(
@@ -143,17 +141,16 @@ enum DbgLogId {
     #[default]
     First,
     Second,
-    Third,
 }
 
 #[test]
 fn enum_as_dbg_log_id() {
-    let dbg_id: LogId = DbgLogId::First.into();
+    let dbg_id: LogId = DbgLogId::Second.into();
 
     assert_eq!(
         dbg_id.get_identifier(),
-        "DbgLogId::First",
-        "Derive set wrong identifier name for first variant.",
+        "DbgLogId::Second",
+        "Derive set wrong identifier name for second variant.",
     );
 
     assert_eq!(
@@ -168,18 +165,16 @@ enum TraceLogId {
     #[default]
     First,
     Second,
-    Third,
-    Fourth,
 }
 
 #[test]
 fn enum_as_trace_log_id() {
-    let trace_id: LogId = TraceLogId::Fourth.into();
+    let trace_id: LogId = TraceLogId::Second.into();
 
     assert_eq!(
         trace_id.get_identifier(),
-        "TraceLogId::Fourth",
-        "Derive set wrong identifier name for fourth variant.",
+        "TraceLogId::Second",
+        "Derive set wrong identifier name for second variant.",
     );
 
     assert_eq!(
