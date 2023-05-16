@@ -9,7 +9,7 @@
 //!
 //! **Usage:**
 //!
-//! ~~~
+//! ~~~ignore
 //! use logid::{log_id::{LogId, LogLevel}, err};
 //! use logid_derive::ErrLogId;
 //! use thiserror::Error;
@@ -38,3 +38,6 @@ pub mod set_macros;
 
 // Re-exports
 pub use evident;
+
+#[cfg(feature = "diagnostics")]
+pub use lsp_types;

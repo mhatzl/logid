@@ -3,9 +3,9 @@ mod diagnostic_tests {
     use logid::{
         intermediary_log,
         logging::{event_addons::LogEventAddons, LOGGER},
+        lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range},
     };
     use logid_derive::WarnLogId;
-    use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
     #[derive(Debug, Default, WarnLogId, Clone)]
     enum TestWarnId {

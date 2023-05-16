@@ -1,7 +1,7 @@
 #[cfg(feature = "payloads")]
 mod payload_tests {
-    use evident::event::entry::EventEntry;
     use logid::{
+        evident::event::entry::EventEntry,
         log_id::LogLevel,
         logging::{event_addons::LogEventAddons, LOGGER},
         set_event,

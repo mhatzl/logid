@@ -80,7 +80,7 @@ impl LogEventAddons for IntermediaryLogEvent {
 
     /// Add diagnostic info to this log-id event
     #[cfg(feature = "diagnostics")]
-    fn add_diagnostic(mut self, diagnostic: lsp_types::Diagnostic) -> Self {
+    fn add_diagnostic(mut self, diagnostic: crate::lsp_types::Diagnostic) -> Self {
         add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
         self
     }

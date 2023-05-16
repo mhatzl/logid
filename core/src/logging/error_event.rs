@@ -62,7 +62,7 @@ impl<E: std::error::Error + Into<LogId> + Clone> LogEventAddons for ErrLogEvent<
     }
 
     #[cfg(feature = "diagnostics")]
-    fn add_diagnostic(mut self, diagnostic: lsp_types::Diagnostic) -> Self {
+    fn add_diagnostic(mut self, diagnostic: crate::lsp_types::Diagnostic) -> Self {
         self.interm_event = self.interm_event.add_diagnostic(diagnostic);
         self
     }

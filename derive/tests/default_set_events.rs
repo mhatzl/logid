@@ -1,24 +1,30 @@
-use evident::event::entry::EventEntry;
 use logid::{
-    log_id::{LogId, LogLevel},
+    err,
+    evident::event::{entry::EventEntry, origin::Origin},
+    log,
+    log_id::LogLevel,
     logging::LOGGER,
-    set_event,
 };
+use logid_derive::ErrLogId;
+use thiserror::Error;
+
+#[derive(Debug, Default, ErrLogId, PartialEq, Clone, Error)]
+enum TestErrId {
+    #[error("Error on `TestErrId::One`")]
+    One,
+
+    #[error("Error on `TestErrId::Two`")]
+    #[default]
+    Two,
+}
 
 #[test]
-fn capture_logid_with_custom_identifier() {
-    let msg = "Set log message";
-    let identifier = "log_id";
-    let log_id = LogId::new(
-        env!("CARGO_PKG_NAME"),
-        module_path!(),
-        identifier,
-        LogLevel::Trace,
-    );
+fn capture_single_logid() {
+    let msg = "Set first log message";
 
-    let recv = LOGGER.subscribe(log_id).unwrap();
+    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
 
-    set_event!(log_id, msg).finalize();
+    log!(TestErrId::One, msg);
 
     let event = recv
         .get_receiver()
@@ -28,12 +34,12 @@ fn capture_logid_with_custom_identifier() {
     let entry = event.get_entry();
     assert_eq!(
         *entry.get_event_id(),
-        log_id,
+        TestErrId::One.into(),
         "Set and stored log-ids are not equal"
     );
     assert_eq!(
         entry.get_level(),
-        LogLevel::Trace,
+        LogLevel::Error,
         "Set and stored event levels are not equal"
     );
     assert_eq!(
@@ -42,9 +48,50 @@ fn capture_logid_with_custom_identifier() {
         "Set and stored messages are not equal"
     );
     assert_eq!(
-        entry.get_event_id().get_identifier(),
-        identifier,
-        "Set and stored identifiers are not equal"
+        *entry.get_origin(),
+        Origin::new(
+            env!("CARGO_PKG_NAME"),
+            module_path!(),
+            file!(),
+            line!() - 29
+        ), //Note: Event is set 29 lines above
+        "Set and stored origins are not equal"
+    );
+}
+
+fn failing_fn(msg: &str) -> Result<(), TestErrId> {
+    err!(TestErrId::One, msg)
+}
+
+#[test]
+fn set_event_for_err_result() {
+    let msg = "Set first log message";
+
+    let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
+
+    let res = failing_fn(msg);
+
+    assert_eq!(
+        res.unwrap_err(),
+        TestErrId::One,
+        "Converted LogId from result is wrong"
+    );
+
+    let event = recv
+        .get_receiver()
+        .recv_timeout(std::time::Duration::from_millis(10))
+        .unwrap();
+
+    let entry = event.get_entry();
+    assert_eq!(
+        *entry.get_event_id(),
+        TestErrId::One.into(),
+        "Set and stored log-ids are not equal"
+    );
+    assert_eq!(
+        *entry.get_msg(),
+        msg,
+        "Set and stored messages are not equal"
     );
 }
 

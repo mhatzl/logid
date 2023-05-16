@@ -10,7 +10,7 @@ pub trait LogEventAddons {
 
     /// Add diagnostic info to this log-id event
     #[cfg(feature = "diagnostics")]
-    fn add_diagnostic(self, diagnostic: lsp_types::Diagnostic) -> Self;
+    fn add_diagnostic(self, diagnostic: crate::lsp_types::Diagnostic) -> Self;
 
     /// Add a payload to this log-id event
     #[cfg(feature = "payloads")]

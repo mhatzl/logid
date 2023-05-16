@@ -20,7 +20,7 @@ pub struct LogEventEntry {
 
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
-    pub(crate) diagnostics: Vec<lsp_types::Diagnostic>,
+    pub(crate) diagnostics: Vec<crate::lsp_types::Diagnostic>,
 
     /// List of payloads for this log-id entry
     #[cfg(feature = "payloads")]
@@ -100,7 +100,7 @@ impl LogEventEntry {
     }
 
     #[cfg(feature = "diagnostics")]
-    pub fn get_diagnostics(&self) -> &Vec<lsp_types::Diagnostic> {
+    pub fn get_diagnostics(&self) -> &Vec<crate::lsp_types::Diagnostic> {
         &self.diagnostics
     }
 
@@ -117,7 +117,7 @@ pub(crate) enum EntryKind {
     Trace(String),
 
     #[cfg(feature = "diagnostics")]
-    Diagnostic(lsp_types::Diagnostic),
+    Diagnostic(crate::lsp_types::Diagnostic),
 
     #[cfg(feature = "payloads")]
     Payload(serde_json::value::Value),
