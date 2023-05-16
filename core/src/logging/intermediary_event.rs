@@ -2,10 +2,7 @@ use evident::event::{entry::EventEntry, origin::Origin};
 
 use crate::log_id::LogId;
 
-use super::{
-    event_addons::LogEventAddons,
-    event_entry::{EntryKind, LogEventEntry},
-};
+use super::event_entry::{EntryKind, LogEventEntry};
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -57,52 +54,19 @@ impl IntermediaryLogEvent {
     pub fn get_entry(&self) -> &LogEventEntry {
         &self.entry
     }
-}
 
-impl LogEventAddons for IntermediaryLogEvent {
-    /// Add an info message to this log-id event
-    fn add_info(mut self, msg: &str) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Info(msg.to_owned()));
+    pub fn add_addon(mut self, kind: EntryKind) -> Self {
+        match kind {
+            EntryKind::Info(msg) => self.entry.infos.push(msg),
+            EntryKind::Debug(msg) => self.entry.debugs.push(msg),
+            EntryKind::Trace(msg) => self.entry.traces.push(msg),
+
+            #[cfg(feature = "diagnostics")]
+            EntryKind::Diagnostic(diag) => self.entry.diagnostics.push(diag),
+
+            #[cfg(feature = "payloads")]
+            EntryKind::Payload(payload) => self.entry.payloads.push(payload),
+        }
         self
-    }
-
-    /// Add a debug message to this log-id event
-    fn add_debug(mut self, msg: &str) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Debug(msg.to_owned()));
-        self
-    }
-
-    /// Add a trace message to this log-id event
-    fn add_trace(mut self, msg: &str) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Trace(msg.to_owned()));
-        self
-    }
-
-    /// Add diagnostic info to this log-id event
-    #[cfg(feature = "diagnostics")]
-    fn add_diagnostic(mut self, diagnostic: crate::lsp_types::Diagnostic) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Diagnostic(diagnostic));
-        self
-    }
-
-    /// Add a payload to this log-id event
-    #[cfg(feature = "payloads")]
-    fn add_payload(mut self, payload: serde_json::value::Value) -> Self {
-        add_addon_to_entry(&mut self, EntryKind::Payload(payload));
-        self
-    }
-}
-
-fn add_addon_to_entry(id_event: &mut IntermediaryLogEvent, kind: EntryKind) {
-    match kind {
-        EntryKind::Info(msg) => id_event.entry.infos.push(msg),
-        EntryKind::Debug(msg) => id_event.entry.debugs.push(msg),
-        EntryKind::Trace(msg) => id_event.entry.traces.push(msg),
-
-        #[cfg(feature = "diagnostics")]
-        EntryKind::Diagnostic(diag) => id_event.entry.diagnostics.push(diag),
-
-        #[cfg(feature = "payloads")]
-        EntryKind::Payload(payload) => id_event.entry.payloads.push(payload),
     }
 }

@@ -2,9 +2,9 @@
 mod payload_tests {
     use logid::{
         evident::event::entry::EventEntry,
+        log,
         log_id::LogLevel,
-        logging::{event_addons::LogEventAddons, LOGGER},
-        set_event,
+        logging::{event_entry::EntryKind, LOGGER},
     };
     use logid_derive::{FromLogId, TraceLogId};
 
@@ -31,7 +31,11 @@ mod payload_tests {
 
         let recv = LOGGER.subscribe(TestTraceId::One.into()).unwrap();
 
-        set_event!(TestTraceId::One.into(), msg).add_payload(payload.clone());
+        log!(
+            TestTraceId::One,
+            msg,
+            addon: EntryKind::Payload(payload.clone())
+        );
 
         let event = recv
             .get_receiver()

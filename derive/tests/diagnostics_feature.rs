@@ -1,8 +1,8 @@
 #[cfg(feature = "diagnostics")]
 mod diagnostic_tests {
     use logid::{
-        intermediary_log,
-        logging::{event_addons::LogEventAddons, LOGGER},
+        log,
+        logging::{event_entry::EntryKind, LOGGER},
         lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range},
     };
     use logid_derive::WarnLogId;
@@ -35,9 +35,11 @@ mod diagnostic_tests {
 
         let recv = LOGGER.subscribe(TestWarnId::One.into()).unwrap();
 
-        intermediary_log!(TestWarnId::One, msg)
-            .add_diagnostic(diagnostics.clone())
-            .finalize();
+        log!(
+            TestWarnId::One,
+            msg,
+            addon: EntryKind::Diagnostic(diagnostics.clone())
+        );
 
         let event = recv
             .get_receiver()

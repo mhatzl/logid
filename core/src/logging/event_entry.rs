@@ -111,7 +111,8 @@ impl LogEventEntry {
 }
 
 /// [`EntryKind`] defines the information kind to be added to an [`EventEntry`].
-pub(crate) enum EntryKind {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EntryKind {
     Info(String),
     Debug(String),
     Trace(String),

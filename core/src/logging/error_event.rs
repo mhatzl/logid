@@ -1,7 +1,7 @@
 use crate::log_id::LogId;
 
 use super::{
-    event_addons::LogEventAddons, event_entry::LogEventEntry,
+    event_entry::{EntryKind, LogEventEntry},
     intermediary_event::IntermediaryLogEvent,
 };
 
@@ -43,33 +43,20 @@ impl<E: std::error::Error + Into<LogId> + Clone> ErrLogEvent<E> {
         self.interm_event.finalize();
         self.error
     }
-}
 
-impl<E: std::error::Error + Into<LogId> + Clone> LogEventAddons for ErrLogEvent<E> {
-    fn add_info(mut self, msg: &str) -> Self {
-        self.interm_event = self.interm_event.add_info(msg);
-        self
-    }
+    pub fn add_addon(mut self, kind: EntryKind) -> Self {
+        match kind {
+            EntryKind::Info(msg) => self.interm_event.entry.infos.push(msg),
+            EntryKind::Debug(msg) => self.interm_event.entry.debugs.push(msg),
+            EntryKind::Trace(msg) => self.interm_event.entry.traces.push(msg),
 
-    fn add_debug(mut self, msg: &str) -> Self {
-        self.interm_event = self.interm_event.add_debug(msg);
-        self
-    }
+            #[cfg(feature = "diagnostics")]
+            EntryKind::Diagnostic(diag) => self.interm_event.entry.diagnostics.push(diag),
 
-    fn add_trace(mut self, msg: &str) -> Self {
-        self.interm_event = self.interm_event.add_trace(msg);
-        self
-    }
+            #[cfg(feature = "payloads")]
+            EntryKind::Payload(payload) => self.interm_event.entry.payloads.push(payload),
+        }
 
-    #[cfg(feature = "diagnostics")]
-    fn add_diagnostic(mut self, diagnostic: crate::lsp_types::Diagnostic) -> Self {
-        self.interm_event = self.interm_event.add_diagnostic(diagnostic);
-        self
-    }
-
-    #[cfg(feature = "payloads")]
-    fn add_payload(mut self, payload: serde_json::value::Value) -> Self {
-        self.interm_event = self.interm_event.add_payload(payload);
         self
     }
 }
