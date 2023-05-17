@@ -57,5 +57,5 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Run tests
-      # Sequential testing required since all log entries are stored in one central hashmap
+      # Sequential testing required since LogIds may be subscribed to in different tests.
       run: cargo test --verbose --all-features -- --test-threads 1
