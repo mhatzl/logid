@@ -4,7 +4,7 @@ mod payload_tests {
         evident::event::entry::EventEntry,
         log,
         log_id::LogLevel,
-        logging::{event_entry::EntryKind, LOGGER},
+        logging::{event_entry::AddonKind, LOGGER},
     };
     use logid_derive::{FromLogId, TraceLogId};
 
@@ -34,7 +34,7 @@ mod payload_tests {
         log!(
             TestTraceId::One,
             msg,
-            addon: EntryKind::Payload(payload.clone())
+            add: AddonKind::Payload(payload.clone())
         );
 
         let event = recv

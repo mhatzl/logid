@@ -2,7 +2,7 @@
 mod diagnostic_tests {
     use logid::{
         log,
-        logging::{event_entry::EntryKind, LOGGER},
+        logging::{event_entry::AddonKind, LOGGER},
         lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range},
     };
     use logid_derive::WarnLogId;
@@ -38,7 +38,7 @@ mod diagnostic_tests {
         log!(
             TestWarnId::One,
             msg,
-            addon: EntryKind::Diagnostic(diagnostics.clone())
+            add: AddonKind::Diagnostic(diagnostics.clone())
         );
 
         let event = recv

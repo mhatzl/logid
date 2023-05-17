@@ -2,7 +2,7 @@ use evident::event::{entry::EventEntry, origin::Origin};
 
 use crate::log_id::LogId;
 
-use super::event_entry::{EntryKind, LogEventEntry};
+use super::event_entry::{AddonKind, LogEventEntry};
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -55,17 +55,17 @@ impl IntermediaryLogEvent {
         &self.entry
     }
 
-    pub fn add_addon(mut self, kind: EntryKind) -> Self {
+    pub fn add_addon(mut self, kind: AddonKind) -> Self {
         match kind {
-            EntryKind::Info(msg) => self.entry.infos.push(msg),
-            EntryKind::Debug(msg) => self.entry.debugs.push(msg),
-            EntryKind::Trace(msg) => self.entry.traces.push(msg),
+            AddonKind::Info(msg) => self.entry.infos.push(msg),
+            AddonKind::Debug(msg) => self.entry.debugs.push(msg),
+            AddonKind::Trace(msg) => self.entry.traces.push(msg),
 
             #[cfg(feature = "diagnostics")]
-            EntryKind::Diagnostic(diag) => self.entry.diagnostics.push(diag),
+            AddonKind::Diagnostic(diag) => self.entry.diagnostics.push(diag),
 
             #[cfg(feature = "payloads")]
-            EntryKind::Payload(payload) => self.entry.payloads.push(payload),
+            AddonKind::Payload(payload) => self.entry.payloads.push(payload),
         }
         self
     }

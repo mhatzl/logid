@@ -12,7 +12,7 @@ categories = ["development-tools::debugging"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-evident = { path = "../../evident", version = "0.4" }
+evident = { path = "../../evident", version = "0.5" }
 lsp-types = { version = "0.94", optional = true }
 serde_json = { version = "1.0", optional = true }
 

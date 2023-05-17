@@ -110,9 +110,9 @@ impl LogEventEntry {
     }
 }
 
-/// [`EntryKind`] defines the information kind to be added to an [`EventEntry`].
+/// [`AddonKind`] defines the information kind to be added to an [`EventEntry`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EntryKind {
+pub enum AddonKind {
     Info(String),
     Debug(String),
     Trace(String),

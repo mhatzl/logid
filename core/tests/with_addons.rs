@@ -3,7 +3,7 @@ use std::error::Error;
 use logid::{
     err,
     log_id::{LogId, LogLevel},
-    logging::{event_entry::EntryKind, LOGGER},
+    logging::{event_entry::AddonKind, LOGGER},
     new_log_id,
 };
 
@@ -27,11 +27,11 @@ impl From<TestDummy> for LogId {
 #[test]
 fn add_single_info_for_err() {
     let dummy = TestDummy {};
-    let info_msg = EntryKind::Info("Test".to_owned());
+    let info_msg = AddonKind::Info("Test".to_owned());
 
     let recv = LOGGER.subscribe(dummy.into()).unwrap();
 
-    let _: Result<(), _> = err!(dummy, addon: info_msg.clone());
+    let _: Result<(), _> = err!(dummy, add: info_msg.clone());
 
     let event = recv
         .get_receiver()
@@ -45,7 +45,7 @@ fn add_single_info_for_err() {
         "Additional info was not added to entry"
     );
     assert_eq!(
-        EntryKind::Info(entry.get_infos().first().unwrap().to_string()),
+        AddonKind::Info(entry.get_infos().first().unwrap().to_string()),
         info_msg,
         "Set additional info was not stored in the entry"
     );
@@ -54,15 +54,15 @@ fn add_single_info_for_err() {
 #[test]
 fn add_multiple_infos_for_err() {
     let dummy = TestDummy {};
-    let info_msg = EntryKind::Info("Test".to_owned());
+    let info_msg = AddonKind::Info("Test".to_owned());
 
     let recv = LOGGER.subscribe(dummy.into()).unwrap();
 
     let _: Result<(), _> = err!(
         dummy,
-        addon: info_msg.clone(),
-        addon: info_msg.clone(),
-        addon: info_msg.clone()
+        add: info_msg.clone(),
+        add: info_msg.clone(),
+        add: info_msg.clone()
     );
 
     let event = recv
@@ -77,7 +77,7 @@ fn add_multiple_infos_for_err() {
         "Additional info was not added to entry"
     );
     assert_eq!(
-        EntryKind::Info(entry.get_infos().first().unwrap().to_string()),
+        AddonKind::Info(entry.get_infos().first().unwrap().to_string()),
         info_msg,
         "Set additional info was not stored in the entry"
     );
