@@ -1,4 +1,4 @@
-use logid::log_id::{LogId, LogLevel};
+use logid_core::log_id::{LogId, LogLevel};
 use logid_derive::{DbgLogId, ErrLogId, FromLogId, InfoLogId, TraceLogId, WarnLogId};
 
 #[derive(PartialEq, Eq, Debug, Default, ErrLogId, FromLogId)]

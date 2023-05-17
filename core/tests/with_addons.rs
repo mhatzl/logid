@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use logid::{
+use logid_core::{
     err,
     log_id::{LogId, LogLevel},
     logging::{event_entry::AddonKind, LOGGER},

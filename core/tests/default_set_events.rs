@@ -1,5 +1,5 @@
-use evident::event::entry::EventEntry;
-use logid::{
+use logid_core::{
+    evident::event::entry::EventEntry,
     log_id::{LogId, LogLevel},
     logging::LOGGER,
     set_event,

@@ -1,4 +1,4 @@
-use logid::{
+use logid_core::{
     err,
     evident::event::{entry::EventEntry, origin::Origin},
     log,

@@ -86,7 +86,7 @@ impl std::fmt::Display for LogLevel {
 /// ## Usage
 ///
 /// ```
-/// use logid::{new_log_id, log_id::LogLevel};
+/// use logid_core::{new_log_id, log_id::LogLevel};
 ///
 /// let id = new_log_id!("custom_ident", LogLevel::Debug);
 /// ```

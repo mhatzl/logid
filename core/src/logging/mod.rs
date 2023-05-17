@@ -16,7 +16,7 @@ evident::create_static_publisher!(
     non_blocking = true
 );
 evident::create_set_event_macro!(
-    logid::log_id::LogId,
-    logid::logging::event_entry::LogEventEntry,
-    logid::logging::intermediary_event::IntermediaryLogEvent
+    logid_core::log_id::LogId,
+    logid_core::logging::event_entry::LogEventEntry,
+    logid_core::logging::intermediary_event::IntermediaryLogEvent
 );

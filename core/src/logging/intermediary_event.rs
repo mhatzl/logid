@@ -16,7 +16,7 @@ impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>
 {
     fn new(event_id: LogId, msg: &str, origin: Origin) -> Self {
         IntermediaryLogEvent {
-            entry: LogEventEntry::new(event_id.into(), msg, origin),
+            entry: LogEventEntry::new(event_id, msg, origin),
         }
     }
 

@@ -1,13 +1,11 @@
 [package]
-name = "logid"
+name = "logid-core"
+description = "Core for the [logid](https://crates.io/crates/logid) logging framework."
 version.workspace = true
 edition.workspace = true
-description = "Rust logging framework using IDs to identify log entries."
 repository.workspace = true
 license.workspace = true
 readme.workspace = true
-keywords = ["logging", "tracing"]
-categories = ["development-tools::debugging"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
