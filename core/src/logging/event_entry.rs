@@ -1,7 +1,7 @@
 use crate::evident::event::origin::Origin;
 use crate::log_id::{LogId, LogLevel};
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct LogEventEntry {
     /// The event id of this entry
     pub(crate) event_id: LogId,

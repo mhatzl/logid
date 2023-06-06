@@ -13,24 +13,25 @@
 //! use logid::{log_id::{LogId, LogLevel}, err, ErrLogId};
 //! use thiserror::Error;
 //!
-//! #[derive(Debug, Default, Clone, ErrLogId, Error)]
-//! enum CrateErrors {
+//! #[derive(Debug, Clone, ErrLogId, Error)]
+//! enum CrateError {
 //!     #[error("`SomeError` description.")]
 //!     SomeError,
 //!
 //!     #[error("`InternalError` description.")]
-//!     #[default]
 //!     InternalError,
 //! }
 //!
-//! fn my_func() -> Result<(), CrateErrors> {
+//! fn my_func() -> Result<(), CrateError> {
 //!     // some code ...
 //!
 //!     // on error
-//!     err!(CrateErrors::SomeError)
+//!     err!(CrateError::SomeError)
 //! }
 //! ~~~
 
 // Re-export to get core and derive in one crate.
 pub use logid_core::*;
 pub use logid_derive::*;
+
+pub mod macros;

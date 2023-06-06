@@ -42,8 +42,14 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
 
             for variant in enum_data.variants {
                 let field_name = variant.ident;
-                let full_field_name = quote_spanned! {span=>
-                    #ident_name::#field_name
+                let full_field_name = if variant.fields.len() == 0 {
+                    quote_spanned! {span=>
+                        #ident_name::#field_name
+                    }
+                } else {
+                    quote_spanned! {span=>
+                        #ident_name::#field_name(_)
+                    }
                 };
                 let full_field_name_str =
                     syn::LitStr::new(&full_field_name.to_string().replace(' ', ""), span);
@@ -53,13 +59,13 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
             }
 
             let from_enum = quote_spanned! {span=>
-                impl From<#ident_name> for logid_core::log_id::LogId {
+                impl From<#ident_name> for logid::log_id::LogId {
                     fn from(value: #ident_name) -> Self {
                         let field_name = match value {
                             #(#field_identifiers)*
                         };
 
-                        logid_core::log_id::LogId::new(
+                        logid::log_id::LogId::new(
                             env!("CARGO_PKG_NAME"),
                             module_path!(),
                             field_name,
@@ -87,13 +93,15 @@ fn from_struct_or_union(
     log_token: proc_macro2::TokenStream,
     span: proc_macro2::Span,
 ) -> TokenStream {
+    let ident_name_str = syn::LitStr::new(&ident_name.to_string(), span);
+
     let from = quote_spanned! {span=>
-        impl From<#ident_name> for logid_core::log_id::LogId {
+        impl From<#ident_name> for logid::log_id::LogId {
             fn from(value: #ident_name) -> Self {
-                logid_core::log_id::LogId::new(
+                logid::log_id::LogId::new(
                     env!("CARGO_PKG_NAME"),
                     module_path!(),
-                    #ident_name,
+                    #ident_name_str,
                     #log_token,
                 )
             }
@@ -127,8 +135,8 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
             }
 
             let from_log_id = quote_spanned! {span=>
-                impl From<logid_core::log_id::LogId> for #enum_name {
-                    fn from(value: logid_core::log_id::LogId) -> Self {
+                impl From<logid::log_id::LogId> for #enum_name {
+                    fn from(value: logid::log_id::LogId) -> Self {
                         if value.get_crate_name() != env!("CARGO_PKG_NAME")
                             || value.get_module_path() != module_path!() {
 
@@ -142,8 +150,8 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                impl From<logid_core::logging::intermediary_event::IntermediaryLogEvent> for #enum_name {
-                    fn from(value: logid_core::logging::intermediary_event::IntermediaryLogEvent) -> Self {
+                impl From<logid::logging::intermediary_event::IntermediaryLogEvent> for #enum_name {
+                    fn from(value: logid::logging::intermediary_event::IntermediaryLogEvent) -> Self {
                         value.finalize().into_event_id().into()
                     }
                 }
@@ -157,10 +165,10 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
 
 fn log_level_as_tokenstream(level: LogLevel) -> proc_macro2::TokenStream {
     match level {
-        LogLevel::Error => quote! { logid_core::log_id::LogLevel::Error },
-        LogLevel::Warn => quote! { logid_core::log_id::LogLevel::Warn },
-        LogLevel::Info => quote! { logid_core::log_id::LogLevel::Info },
-        LogLevel::Debug => quote! { logid_core::log_id::LogLevel::Debug },
-        LogLevel::Trace => quote! { logid_core::log_id::LogLevel::Trace },
+        LogLevel::Error => quote! { logid::log_id::LogLevel::Error },
+        LogLevel::Warn => quote! { logid::log_id::LogLevel::Warn },
+        LogLevel::Info => quote! { logid::log_id::LogLevel::Info },
+        LogLevel::Debug => quote! { logid::log_id::LogLevel::Debug },
+        LogLevel::Trace => quote! { logid::log_id::LogLevel::Trace },
     }
 }

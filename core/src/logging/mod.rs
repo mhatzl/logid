@@ -15,8 +15,3 @@ evident::create_static_publisher!(
     SUBSCRIPTION_CHANNEL_BOUND = 500,
     non_blocking = true
 );
-evident::create_set_event_macro!(
-    logid_core::log_id::LogId,
-    logid_core::logging::event_entry::LogEventEntry,
-    logid_core::logging::intermediary_event::IntermediaryLogEvent
-);

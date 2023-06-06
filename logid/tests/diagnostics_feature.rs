@@ -1,7 +1,7 @@
 #[cfg(feature = "diagnostics")]
 mod diagnostic_tests {
+    use logid::log;
     use logid_core::{
-        log,
         logging::{event_entry::AddonKind, LOGGER},
         lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range},
     };

@@ -5,25 +5,23 @@ Rust logging framework using IDs to identify log events.
 ## Using `logid`
 
 ```Rust
-use logid::err;
-use logid_derive::ErrLogId;
+use logid::{log_id::{LogId, LogLevel}, err, ErrLogId};
 use thiserror::Error;
 
-#[derive(Debug, Default, Clone, Error, ErrLogId)]
-enum CrateErrors {
+#[derive(Debug, Clone, ErrLogId, Error)]
+enum CrateError {
     #[error("`SomeError` description.")]
     SomeError,
 
     #[error("`InternalError` description.")]
-    #[default]
     InternalError,
 }
 
-fn my_func() -> Result<(), CrateErrors> {
+fn my_func() -> Result<(), CrateError> {
     // some code ...
-
+    
     // on error
-    err!(CrateErrors::SomeError)
+    err!(CrateError::SomeError)
 }
 ```
 

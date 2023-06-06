@@ -1,7 +1,7 @@
 use std::error::Error;
 
+use logid::err;
 use logid_core::{
-    err,
     log_id::{LogId, LogLevel},
     logging::{event_entry::AddonKind, LOGGER},
     new_log_id,

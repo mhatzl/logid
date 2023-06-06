@@ -1,3 +1,9 @@
+crate::evident::create_set_event_macro!(
+    logid::log_id::LogId,
+    logid::logging::event_entry::LogEventEntry,
+    logid::logging::intermediary_event::IntermediaryLogEvent
+);
+
 #[macro_export]
 macro_rules! err {
     ($error:ident) => {
@@ -68,29 +74,36 @@ macro_rules! err {
 #[macro_export]
 macro_rules! log {
     ($any:ident) => {
-        $crate::set_event!(($enum_name::$variant).into(), $any.to_string()).finalize()
+        $crate::set_event!(($any).clone().into(), &$any.to_string()).finalize()
     };
     ($any:ident, $(add:$addon:expr),*) => {
-        $crate::set_event!(($enum_name::$variant).into(), $any.to_string())$(.add_addon($addon))*.finalize()
+        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
     };
     ($any:ident, $msg:expr) => {
-        $crate::set_event!(($enum_name::$variant).into(), $any.to_string()).finalize()
+        $crate::set_event!(($any).into(), &$any.to_string()).finalize()
     };
     ($any:ident, $msg:expr, $(add:$addon:expr),*) => {
-        $crate::set_event!(($enum_name::$variant).into(), $any.to_string())$(.add_addon($addon))*.finalize()
+        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
     };
 
-    ($enum_name:ident::$variant:ident:ident) => {
+    ($enum_name:ident::$variant:ident) => {
         $crate::set_event!(
             ($enum_name::$variant).into(),
-            ($enum_name::$variant).to_string()
+            &($enum_name::$variant).to_string()
         )
         .finalize()
     };
-    ($enum_name:ident::$variant:ident:ident, $(add:$addon:expr),*) => {
+    ($enum_name:ident::$variant:ident($data:expr)) => {
+        $crate::set_event!(
+            ($enum_name::$variant($data)).into(),
+            &($enum_name::$variant($data)).to_string()
+        )
+        .finalize()
+    };
+    ($enum_name:ident::$variant:ident, $(add:$addon:expr),*) => {
         $crate::set_event!(
             ($enum_name::$variant).into(),
-            ($enum_name::$variant).to_string()
+            &($enum_name::$variant).to_string()
         )
         $(.add_addon($addon))*
         .finalize()
