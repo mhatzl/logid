@@ -42,7 +42,7 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
 
             for variant in enum_data.variants {
                 let field_name = variant.ident;
-                let full_field_name = if variant.fields.len() == 0 {
+                let full_field_name = if variant.fields.is_empty() {
                     quote_spanned! {span=>
                         #ident_name::#field_name
                     }
