@@ -5,113 +5,73 @@ crate::evident::create_set_event_macro!(
 );
 
 #[macro_export]
-macro_rules! err {
-    ($error:ident) => {
-        Err(
-            $crate::logging::error_event::ErrLogEvent::new($error, $crate::evident::this_origin!())
-                .into_err(),
-        )
+macro_rules! log {
+    ($any:expr) => {
+        $crate::set_event!(($any).clone().into(), &$any.to_string()).finalize()
     };
-    ($error:ident, $(add:$addon:expr),*) => {
-        Err(
-            $crate::logging::error_event::ErrLogEvent::new($error, $crate::evident::this_origin!())
-                $(.add_addon($addon))*
-                .into_err(),
-        )
+    ($any:expr, $(add:$addon:expr),*) => {
+        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
     };
-    ($error:ident, $msg:expr) => {
-        Err($crate::logging::error_event::ErrLogEvent::new_with_msg(
-            $error,
-            $msg,
-            $crate::evident::this_origin!(),
-        )
-        .into_err())
+    ($any:expr, $msg:expr) => {
+        $crate::set_event!(($any).into(), $msg).finalize()
     };
-    ($error:ident, $msg:expr, $(add:$addon:expr),*) => {
-        Err($crate::logging::error_event::ErrLogEvent::new_with_msg(
-            $error,
-            $msg,
-            $crate::evident::this_origin!(),
-        )
-        $(.add_addon($addon))*
-        .into_err())
-    };
-
-    ($enum_name:ident::$variant:ident) => {
-        Err($crate::logging::error_event::ErrLogEvent::new(
-            $enum_name::$variant,
-            $crate::evident::this_origin!(),
-        )
-        .into_err())
-    };
-    ($enum_name:ident::$variant:ident, $(add:$addon:expr),*) => {
-        Err($crate::logging::error_event::ErrLogEvent::new(
-            $enum_name::$variant,
-            $crate::evident::this_origin!(),
-        )
-        $(.add_addon($addon))*
-        .into_err())
-    };
-    ($enum_name:ident::$variant:ident, $msg:expr) => {
-        Err($crate::logging::error_event::ErrLogEvent::new_with_msg(
-            $enum_name::$variant,
-            $msg,
-            $crate::evident::this_origin!(),
-        )
-        .into_err())
-    };
-    ($enum_name:ident::$variant:ident, $msg:expr, $(add:$addon:expr),*) => {
-        Err($crate::logging::error_event::ErrLogEvent::new_with_msg(
-            $enum_name::$variant,
-            $msg,
-            $crate::evident::this_origin!(),
-        )
-        $(.add_addon($addon))*
-        .into_err())
+    ($any:expr, $msg:expr, $(add:$addon:expr),*) => {
+        $crate::set_event!(($any).into(), $msg)$(.add_addon($addon))*.finalize()
     };
 }
 
 #[macro_export]
-macro_rules! log {
-    ($any:ident) => {
-        $crate::set_event!(($any).clone().into(), &$any.to_string()).finalize()
+macro_rules! err {
+    ($error:expr) => {
+        {
+            $crate::log!($error);
+            Err($error)
+        }
     };
-    ($any:ident, $(add:$addon:expr),*) => {
-        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
+    ($error:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($error, $(add:$addon),*);
+            Err($error)
+        }
     };
-    ($any:ident, $msg:expr) => {
-        $crate::set_event!(($any).into(), &$any.to_string()).finalize()
+    ($error:expr, $msg:expr) => {
+        {
+            $crate::log!($error, $msg);
+            Err($error)
+        }
     };
-    ($any:ident, $msg:expr, $(add:$addon:expr),*) => {
-        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
+    ($error:expr, $msg:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($error, $msg, $(add:$addon),*);
+            Err($error)
+        }
     };
+}
 
-    ($enum_name:ident::$variant:ident) => {
-        $crate::set_event!(
-            ($enum_name::$variant).into(),
-            &($enum_name::$variant).to_string()
-        )
-        .finalize()
+#[macro_export]
+macro_rules! pipe {
+    ($any:expr) => {
+        {
+            $crate::log!($any);
+            $any
+        }
     };
-    ($enum_name:ident::$variant:ident($data:expr)) => {
-        $crate::set_event!(
-            ($enum_name::$variant($data)).into(),
-            &($enum_name::$variant($data)).to_string()
-        )
-        .finalize()
+    ($any:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($any, $(add:$addon),*);
+            $any
+        }
     };
-    ($enum_name:ident::$variant:ident, $(add:$addon:expr),*) => {
-        $crate::set_event!(
-            ($enum_name::$variant).into(),
-            &($enum_name::$variant).to_string()
-        )
-        $(.add_addon($addon))*
-        .finalize()
+    ($any:expr, $msg:expr) => {
+        {
+            $crate::log!($any, $msg);
+            $any
+        }
     };
-    ($enum_name:ident::$variant:ident, $msg:expr) => {
-        $crate::set_event!(($enum_name::$variant).into(), $msg).finalize()
-    };
-    ($enum_name:ident::$variant:ident, $msg:expr, $(add:$addon:expr),*) => {
-        $crate::set_event!(($enum_name::$variant).into(), $msg)$(.add_addon($addon))*.finalize()
+    ($any:expr, $msg:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($any, $msg, $(add:$addon),*);
+            $any
+        }
     };
 }

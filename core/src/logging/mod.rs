@@ -2,7 +2,6 @@ use crate::log_id::LogId;
 
 use self::{event_entry::LogEventEntry, intermediary_event::IntermediaryLogEvent};
 
-pub mod error_event;
 pub mod event_entry;
 pub mod intermediary_event;
 
