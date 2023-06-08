@@ -34,4 +34,5 @@
 pub use logid_core::*;
 pub use logid_derive::*;
 
+pub mod event_handler;
 pub mod macros;

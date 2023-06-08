@@ -14,7 +14,7 @@ pub struct LogId {
 impl evident::publisher::Id for LogId {}
 
 impl LogId {
-    pub fn new(
+    pub const fn new(
         crate_name: &'static str,
         module_path: &'static str,
         identifier: &'static str,
