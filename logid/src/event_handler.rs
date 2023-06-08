@@ -28,15 +28,21 @@ impl LogEventHandler {
     }
 }
 
+#[derive(Default)]
 pub struct NoKind;
 
+#[derive(Default)]
 pub struct AllLogs;
 
+#[derive(Default)]
 pub struct SpecificLogs;
 
+type Handler = Box<dyn FnMut(Event<LogId, LogEventEntry>) + std::marker::Send + 'static>;
+
+#[derive(Default)]
 pub struct LogEventHandlerBuilder<K> {
     log_ids: Vec<LogId>,
-    handler: Vec<Box<dyn FnMut(Event<LogId, LogEventEntry>) -> () + std::marker::Send + 'static>>,
+    handler: Vec<Handler>,
     sub_kind: PhantomData<K>,
 }
 
@@ -51,7 +57,7 @@ impl LogEventHandlerBuilder<NoKind> {
 
     pub fn add_handler(
         mut self,
-        handler: impl FnMut(Event<LogId, LogEventEntry>) -> () + std::marker::Send + 'static,
+        handler: impl FnMut(Event<LogId, LogEventEntry>) + std::marker::Send + 'static,
     ) -> Self {
         self.handler.push(Box::new(handler));
         self
@@ -108,7 +114,7 @@ impl LogEventHandlerBuilder<SpecificLogs> {
     }
 }
 
-fn event_listener<F: FnMut(Event<LogId, LogEventEntry>) -> ()>(
+fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     mut fns: Vec<F>,
     recv: &Receiver<Event<LogId, LogEventEntry>>,
 ) {
