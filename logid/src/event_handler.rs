@@ -49,7 +49,7 @@ pub struct LogEventHandlerBuilder<K> {
 impl LogEventHandlerBuilder<NoKind> {
     pub fn new() -> Self {
         LogEventHandlerBuilder {
-            log_ids: Vec::new(),
+            log_ids: vec![STOP_LOGGING],
             handler: Vec::new(),
             sub_kind: PhantomData,
         }
