@@ -13,6 +13,11 @@ pub struct LogId {
 
 impl evident::publisher::Id for LogId {}
 
+/// Notify listeners to stop logging.
+///
+/// Note: Uses `LogLevel::Error` to ensure it is not ignored by any filter
+pub const STOP_LOGGING: LogId = crate::new_log_id!("STOP_LOGGING", LogLevel::Error);
+
 impl LogId {
     pub const fn new(
         crate_name: &'static str,

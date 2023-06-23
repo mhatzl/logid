@@ -2,14 +2,9 @@ use std::{marker::PhantomData, sync::mpsc::Receiver, thread::JoinHandle};
 
 use logid_core::{
     evident::event::Event,
-    log_id::{LogId, LogLevel},
+    log_id::LogId,
     logging::{event_entry::LogEventEntry, intermediary_event::IntermediaryLogEvent, LOGGER},
 };
-
-/// Notify listeners to stop logging.
-///
-/// Note: Uses `LogLevel::Error` to ensure it is not ignored by any filter
-const STOP_LOGGING: LogId = logid_core::new_log_id!("STOP_LOGGING", LogLevel::Error);
 
 pub struct LogEventHandler {
     log_thread: JoinHandle<()>,
@@ -18,13 +13,12 @@ pub struct LogEventHandler {
 impl LogEventHandler {
     pub fn shutdown(self) {
         crate::evident::event::set_event::<_, LogEventEntry, IntermediaryLogEvent>(
-            STOP_LOGGING,
+            logid_core::log_id::STOP_LOGGING,
             crate::evident::this_origin!(),
         )
         .finalize();
 
         let _ = self.log_thread.join();
-        LOGGER.shutdown();
     }
 }
 
@@ -49,7 +43,7 @@ pub struct LogEventHandlerBuilder<K> {
 impl LogEventHandlerBuilder<NoKind> {
     pub fn new() -> Self {
         LogEventHandlerBuilder {
-            log_ids: vec![STOP_LOGGING],
+            log_ids: vec![logid_core::log_id::STOP_LOGGING],
             handler: Vec::new(),
             sub_kind: PhantomData,
         }
@@ -119,7 +113,7 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     recv: &Receiver<Event<LogId, LogEventEntry>>,
 ) {
     while let Ok(log_event) = recv.recv() {
-        if log_event.get_id() == &STOP_LOGGING {
+        if log_event.get_id() == &logid_core::log_id::STOP_LOGGING {
             break;
         }
 
