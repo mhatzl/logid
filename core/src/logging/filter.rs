@@ -200,6 +200,17 @@ impl LogIdModuleFilter {
             || id_allowed(&self.allowed_ids, id)
     }
 
+    pub fn addon_allowed(&self, id: LogId, origin: &Origin, addon: &AddonFilter) -> bool {
+        if !self.origin_in_module(origin) {
+            return false;
+        }
+
+        (!self.no_general_logging
+            && self.level >= id.log_level
+            && self.allowed_addons.contains(&addon))
+            || addon_allowed(&self.allowed_ids, id, addon)
+    }
+
     fn try_from(
         s: &str,
         ids: Vec<LogIdAddonFilter>,
@@ -296,12 +307,13 @@ impl LogFilter {
 
             let mut ids = get_ids(&mut stripped_filter_part);
 
-            if stripped_filter_part.starts_with("on") {
+            if stripped_filter_part.starts_with("on") && !ids.is_empty() {
                 log_filter.allowed_global_ids.append(&mut ids);
             } else {
                 let addons = get_addons(&mut stripped_filter_part);
 
                 if let Some(general_level) = try_into_log_level(stripped_filter_part.trim()) {
+                    log_filter.no_general_logging = false;
                     log_filter.general_level = general_level;
                     log_filter.general_addons = addons;
                 } else if let Ok(module_filter) =
@@ -316,15 +328,25 @@ impl LogFilter {
     }
 
     pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: AddonKind) -> bool {
-        if !self.no_general_logging && self.general_addons.contains(&AddonFilter::from(addon)) {
+        let addon_filter = AddonFilter::from(addon);
+
+        if !self.no_general_logging && self.general_addons.contains(&addon_filter) {
             return true;
         }
 
-        // Check addons for global id
+        addon_allowed(&self.allowed_global_ids, id, &addon_filter)
+            || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
+    }
 
-        // check addons for module
+    pub fn show_origin_info(&self, id: LogId, origin: &Origin) -> bool {
+        let addon_filter = AddonFilter::Origin;
 
-        false
+        if !self.no_general_logging && self.general_addons.contains(&addon_filter) {
+            return true;
+        }
+
+        addon_allowed(&self.allowed_global_ids, id, &addon_filter)
+            || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
     }
 }
 
@@ -392,6 +414,31 @@ fn id_allowed_in_origin(modules: &Vec<LogIdModuleFilter>, id: LogId, origin: &Or
     false
 }
 
+fn addon_allowed(ids: &Vec<LogIdAddonFilter>, id: LogId, addon: &AddonFilter) -> bool {
+    for allowed_id in ids {
+        if allowed_id.log_id == id && allowed_id.allowed_addons.contains(&addon) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn addon_allowed_in_origin(
+    modules: &Vec<LogIdModuleFilter>,
+    id: LogId,
+    origin: &Origin,
+    addon: &AddonFilter,
+) -> bool {
+    for module in modules {
+        if module.addon_allowed(id, origin, addon) {
+            return true;
+        }
+    }
+
+    false
+}
+
 fn get_addons(s: &mut String) -> Vec<AddonFilter> {
     let mut addons = Vec::new();
 
@@ -401,7 +448,7 @@ fn get_addons(s: &mut String) -> Vec<AddonFilter> {
         }
 
         if let Some(addons_part) = s.get((addon_start + 1)..addon_end) {
-            for addon_part in addons_part.split('|') {
+            for addon_part in addons_part.split('&') {
                 if let Ok(addon) = AddonFilter::try_from(addon_part.trim()) {
                     if addon == AddonFilter::AllAllowed {
                         addons.push(AddonFilter::Infos);
