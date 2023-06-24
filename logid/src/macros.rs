@@ -1,7 +1,7 @@
 crate::evident::create_set_event_macro!(
-    logid::log_id::LogId,
-    logid::logging::event_entry::LogEventEntry,
-    logid::logging::intermediary_event::IntermediaryLogEvent
+    id_type = logid::log_id::LogId,
+    entry_type = logid::logging::event_entry::LogEventEntry,
+    interm_event_type = logid::logging::intermediary_event::IntermediaryLogEvent
 );
 
 #[macro_export]

@@ -13,10 +13,16 @@ pub struct LogId {
 
 impl evident::publisher::Id for LogId {}
 
+impl evident::publisher::StopCapturing for LogId {
+    fn stop_capturing(id: &Self) -> bool {
+        id == &STOP_LOGGING
+    }
+}
+
 /// Notify listeners to stop logging.
 ///
-/// Note: Uses `LogLevel::Error` to ensure it is not ignored by any filter
-pub const STOP_LOGGING: LogId = crate::new_log_id!("STOP_LOGGING", LogLevel::Error);
+/// **Note:** Filter does not affect capturing of this LogId. It is up to the handler to decide wether to filter it or not.
+pub const STOP_LOGGING: LogId = crate::new_log_id!("STOP_LOGGING", LogLevel::Info);
 
 impl LogId {
     pub const fn new(
@@ -62,12 +68,18 @@ impl std::fmt::Display for LogId {
 /// Log level a [`LogId`] may represent.
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
 pub enum LogLevel {
-    Error,
-    Warn,
-    Info,
+    Error = 0,
+    Warn = 1,
+    Info = 2,
     #[default]
-    Debug,
-    Trace,
+    Debug = 3,
+    Trace = 4,
+}
+
+impl PartialOrd<LogLevel> for LogLevel {
+    fn partial_cmp(&self, other: &LogLevel) -> Option<std::cmp::Ordering> {
+        Some((*self as isize).cmp(&(*other as isize)))
+    }
 }
 
 impl std::fmt::Display for LogLevel {
