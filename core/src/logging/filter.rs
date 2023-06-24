@@ -21,8 +21,8 @@ pub enum AddonFilter {
     Payloads,
 }
 
-impl From<AddonKind> for AddonFilter {
-    fn from(value: AddonKind) -> Self {
+impl From<&AddonKind> for AddonFilter {
+    fn from(value: &AddonKind) -> Self {
         match value {
             AddonKind::Info(_) => AddonFilter::Infos,
             AddonKind::Debug(_) => AddonFilter::Debugs,
@@ -327,7 +327,7 @@ impl LogFilter {
         log_filter
     }
 
-    pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: AddonKind) -> bool {
+    pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: &AddonKind) -> bool {
         let addon_filter = AddonFilter::from(addon);
 
         if !self.no_general_logging && self.general_addons.contains(&addon_filter) {

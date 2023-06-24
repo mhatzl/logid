@@ -30,7 +30,7 @@ fn allow_single_id_with_infos_addon() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );
@@ -56,7 +56,7 @@ fn allow_single_id_with_infos_and_origin_addon() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );
@@ -87,7 +87,7 @@ fn allow_single_id_with_all_addons() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );
@@ -96,7 +96,7 @@ fn allow_single_id_with_all_addons() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Debug("Some info".to_string())
+            &AddonKind::Debug("Some info".to_string())
         ),
         "Debug addon not allowed by filter."
     );
@@ -105,7 +105,7 @@ fn allow_single_id_with_all_addons() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Trace("Some info".to_string())
+            &AddonKind::Trace("Some info".to_string())
         ),
         "Trace addon not allowed by filter."
     );
@@ -131,7 +131,7 @@ fn allow_module_with_infos_addon() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );
@@ -152,7 +152,7 @@ fn allow_crate_with_infos_addon() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );
@@ -173,7 +173,7 @@ fn allow_general_level_with_infos_addon() {
         filter.allow_addon(
             log_id,
             &this_origin!(),
-            AddonKind::Info("Some info".to_string())
+            &AddonKind::Info("Some info".to_string())
         ),
         "Info addon not allowed by filter."
     );

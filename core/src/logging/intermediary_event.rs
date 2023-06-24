@@ -2,7 +2,10 @@ use evident::event::{entry::EventEntry, origin::Origin};
 
 use crate::log_id::LogId;
 
-use super::event_entry::{AddonKind, LogEventEntry};
+use super::{
+    event_entry::{AddonKind, LogEventEntry},
+    LOGGER,
+};
 
 /// Struct linking a [`LogId`] to the map the entry for the ID was added to.
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -56,6 +59,12 @@ impl IntermediaryLogEvent {
     }
 
     pub fn add_addon(mut self, kind: AddonKind) -> Self {
+        if let Some(filter) = LOGGER.get_filter() {
+            if !filter.allow_addon(self.get_event_id(), &self.entry.origin, &kind) {
+                return self;
+            }
+        }
+
         match kind {
             AddonKind::Info(msg) => self.entry.infos.push(msg),
             AddonKind::Debug(msg) => self.entry.debugs.push(msg),
