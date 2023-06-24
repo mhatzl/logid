@@ -139,17 +139,15 @@ impl TryFrom<&str> for LogIdFilter {
             .ok_or(FilterError::ParsingLogId(value.to_string()))?
             .trim();
 
-        if identifier.is_empty() {
-            return Err(FilterError::ParsingLogId(value.to_string()));
-        } else if parts.next() != None {
+        if identifier.is_empty() || parts.next().is_some() {
             return Err(FilterError::ParsingLogId(value.to_string()));
         }
 
-        return Ok(LogIdFilter {
+        Ok(LogIdFilter {
             crate_name: crate_name.to_string(),
             module_path: module_path.to_string(),
             identifier: identifier.to_string(),
-        });
+        })
     }
 }
 
@@ -207,7 +205,7 @@ impl LogIdModuleFilter {
 
         (!self.no_general_logging
             && self.level >= id.log_level
-            && self.allowed_addons.contains(&addon))
+            && self.allowed_addons.contains(addon))
             || addon_allowed(&self.allowed_ids, id, addon)
     }
 
@@ -416,7 +414,7 @@ fn id_allowed_in_origin(modules: &Vec<LogIdModuleFilter>, id: LogId, origin: &Or
 
 fn addon_allowed(ids: &Vec<LogIdAddonFilter>, id: LogId, addon: &AddonFilter) -> bool {
     for allowed_id in ids {
-        if allowed_id.log_id == id && allowed_id.allowed_addons.contains(&addon) {
+        if allowed_id.log_id == id && allowed_id.allowed_addons.contains(addon) {
             return true;
         }
     }
@@ -442,7 +440,7 @@ fn addon_allowed_in_origin(
 fn get_addons(s: &mut String) -> Vec<AddonFilter> {
     let mut addons = Vec::new();
 
-    if let (Some(addon_start), Some(addon_end)) = (s.find("("), s.find(")")) {
+    if let (Some(addon_start), Some(addon_end)) = (s.find('('), s.find(')')) {
         if addon_start >= addon_end {
             return addons;
         }
@@ -478,7 +476,7 @@ fn get_addons(s: &mut String) -> Vec<AddonFilter> {
 fn get_ids(s: &mut String) -> Vec<LogIdAddonFilter> {
     let mut ids = Vec::new();
 
-    if let (Some(ids_start), Some(ids_end)) = (s.find("["), s.find("]")) {
+    if let (Some(ids_start), Some(ids_end)) = (s.find('['), s.find(']')) {
         if ids_start >= ids_end {
             return ids;
         }
