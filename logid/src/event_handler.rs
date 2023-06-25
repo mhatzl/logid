@@ -2,14 +2,9 @@ use std::{marker::PhantomData, sync::mpsc::Receiver, thread::JoinHandle};
 
 use logid_core::{
     evident::event::Event,
-    log_id::{LogId, LogLevel},
+    log_id::LogId,
     logging::{event_entry::LogEventEntry, intermediary_event::IntermediaryLogEvent, LOGGER},
 };
-
-/// Notify listeners to stop logging.
-///
-/// Note: Uses `LogLevel::Error` to ensure it is not ignored by any filter
-const STOP_LOGGING: LogId = logid_core::new_log_id!("STOP_LOGGING", LogLevel::Error);
 
 pub struct LogEventHandler {
     log_thread: JoinHandle<()>,
@@ -18,13 +13,12 @@ pub struct LogEventHandler {
 impl LogEventHandler {
     pub fn shutdown(self) {
         crate::evident::event::set_event::<_, LogEventEntry, IntermediaryLogEvent>(
-            STOP_LOGGING,
+            logid_core::log_id::STOP_LOGGING,
             crate::evident::this_origin!(),
         )
         .finalize();
 
         let _ = self.log_thread.join();
-        LOGGER.shutdown();
     }
 }
 
@@ -49,7 +43,7 @@ pub struct LogEventHandlerBuilder<K> {
 impl LogEventHandlerBuilder<NoKind> {
     pub fn new() -> Self {
         LogEventHandlerBuilder {
-            log_ids: vec![STOP_LOGGING],
+            log_ids: vec![logid_core::log_id::STOP_LOGGING],
             handler: Vec::new(),
             sub_kind: PhantomData,
         }
@@ -63,8 +57,13 @@ impl LogEventHandlerBuilder<NoKind> {
         self
     }
 
-    pub fn write_to_console(mut self) -> Self {
-        self.handler.push(Box::new(console_writer));
+    pub fn to_stderr(mut self) -> Self {
+        self.handler.push(Box::new(stderr_writer));
+        self
+    }
+
+    pub fn to_stdout(mut self) -> Self {
+        self.handler.push(Box::new(stdout_writer));
         self
     }
 
@@ -119,7 +118,7 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     recv: &Receiver<Event<LogId, LogEventEntry>>,
 ) {
     while let Ok(log_event) = recv.recv() {
-        if log_event.get_id() == &STOP_LOGGING {
+        if log_event.get_id() == &logid_core::log_id::STOP_LOGGING {
             break;
         }
 
@@ -127,10 +126,59 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     }
 }
 
-fn console_writer(log_event: Event<LogId, LogEventEntry>) {
-    println!(
-        "{}: {}",
-        log_event.get_id().get_log_level(),
-        log_event.get_msg()
-    );
+fn stderr_writer(log_event: Event<LogId, LogEventEntry>) {
+    console_writer(log_event, true);
+}
+
+fn stdout_writer(log_event: Event<LogId, LogEventEntry>) {
+    console_writer(log_event, false);
+}
+
+fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
+    let id = log_event.get_id();
+    let mut content = format!("{}: {}\n", id.get_log_level(), log_event.get_msg());
+
+    if let Some(filter) = LOGGER.get_filter() {
+        let origin = log_event.get_origin();
+        if filter.show_origin_info(*id, origin) {
+            content.push_str(&format!("|--> Origin: {}\n", origin));
+        }
+    }
+
+    let entry = log_event.get_entry();
+
+    // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
+
+    for info in entry.get_infos() {
+        content.push_str(&format!("|--> Info: {}\n", info));
+    }
+
+    for debug in entry.get_debugs() {
+        content.push_str(&format!("|--> Debug: {}\n", debug));
+    }
+
+    for trace in entry.get_traces() {
+        content.push_str(&format!("|--> Trace: {}\n", trace));
+    }
+
+    for related in entry.get_related() {
+        content.push_str(&format!("|--> Related: {}\n", related));
+    }
+
+    #[cfg(feature = "diagnostics")]
+    for diag in entry.get_diagnostics() {
+        // TODO: make diag output prettier
+        content.push_str(&format!("|--> Diagnostics: {}\n", diag.message));
+    }
+
+    #[cfg(feature = "payloads")]
+    for payload in entry.get_payloads() {
+        content.push_str(&format!("|--> Payload: {}\n", payload));
+    }
+
+    if to_stderr {
+        eprint!("{}", content);
+    } else {
+        print!("{}", content);
+    };
 }
