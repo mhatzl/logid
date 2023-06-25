@@ -1,7 +1,7 @@
 crate::evident::create_set_event_macro!(
-    logid::log_id::LogId,
-    logid::logging::event_entry::LogEventEntry,
-    logid::logging::intermediary_event::IntermediaryLogEvent
+    id_type = logid::log_id::LogId,
+    entry_type = logid::logging::event_entry::LogEventEntry,
+    interm_event_type = logid::logging::intermediary_event::IntermediaryLogEvent
 );
 
 #[macro_export]
@@ -74,4 +74,15 @@ macro_rules! pipe {
             $any
         }
     };
+}
+
+#[macro_export]
+macro_rules! set_filter {
+    ($config:literal) => {{
+        if let Some(filter) = $crate::logging::LOGGER.get_filter() {
+            filter.set_filter($config)
+        } else {
+            Err($crate::logging::filter::FilterError::SettingFilter)
+        }
+    }};
 }
