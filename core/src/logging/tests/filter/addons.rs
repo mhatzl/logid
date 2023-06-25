@@ -68,6 +68,29 @@ fn allow_single_id_with_infos_and_origin_addon() {
 }
 
 #[test]
+fn allow_single_id_with_related_addon() {
+    let log_id = new_log_id!("log_id", LogLevel::Info);
+    let filter = InnerLogFilter::new(&format!(
+        "on[{}::{}::{}(related)]",
+        log_id.get_crate_name(),
+        log_id.get_module_path(),
+        log_id.get_identifier()
+    ));
+
+    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
+    assert!(
+        filter.allow_event(&mut log_event),
+        "Explicitly allowed LogId not allowed by filter."
+    );
+    let finalized = log_event.finalize();
+
+    assert!(
+        filter.allow_addon(log_id, &this_origin!(), &AddonKind::Related(finalized)),
+        "Related addon not allowed by filter."
+    );
+}
+
+#[test]
 fn allow_single_id_with_all_addons() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(

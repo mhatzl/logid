@@ -161,6 +161,10 @@ fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
         content.push_str(&format!("|--> Trace: {}\n", trace));
     }
 
+    for related in entry.get_related() {
+        content.push_str(&format!("|--> Related: {}\n", related));
+    }
+
     #[cfg(feature = "diagnostics")]
     for diag in entry.get_diagnostics() {
         // TODO: make diag output prettier

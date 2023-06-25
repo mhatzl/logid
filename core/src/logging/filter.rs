@@ -90,6 +90,7 @@ impl From<&AddonKind> for AddonFilter {
             AddonKind::Info(_) => AddonFilter::Infos,
             AddonKind::Debug(_) => AddonFilter::Debugs,
             AddonKind::Trace(_) => AddonFilter::Traces,
+            AddonKind::Related(_) => AddonFilter::Related,
 
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(_) => AddonFilter::Diagnostics,

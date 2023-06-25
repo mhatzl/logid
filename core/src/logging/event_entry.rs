@@ -1,3 +1,5 @@
+use evident::event::finalized::FinalizedEvent;
+
 use crate::evident::event::origin::Origin;
 use crate::log_id::{LogId, LogLevel};
 
@@ -15,6 +17,8 @@ pub struct LogEventEntry {
     pub(crate) debugs: Vec<String>,
     /// List of additional trace information for this log-id entry
     pub(crate) traces: Vec<String>,
+    /// List of related log-id event entries
+    pub(crate) related: Vec<FinalizedEvent<LogId>>,
     /// Code position where the log-id entry was created
     pub(crate) origin: Origin,
 
@@ -36,6 +40,7 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
             infos: Vec::new(),
             debugs: Vec::new(),
             traces: Vec::new(),
+            related: Vec::new(),
             origin,
 
             #[cfg(feature = "diagnostics")]
@@ -98,6 +103,10 @@ impl LogEventEntry {
     pub fn get_traces(&self) -> &Vec<String> {
         &self.traces
     }
+    /// Get the list of related log-id event entries
+    pub fn get_related(&self) -> &Vec<FinalizedEvent<LogId>> {
+        &self.related
+    }
 
     #[cfg(feature = "diagnostics")]
     pub fn get_diagnostics(&self) -> &Vec<crate::lsp_types::Diagnostic> {
@@ -116,6 +125,7 @@ pub enum AddonKind {
     Info(String),
     Debug(String),
     Trace(String),
+    Related(FinalizedEvent<LogId>),
 
     #[cfg(feature = "diagnostics")]
     Diagnostic(crate::lsp_types::Diagnostic),
