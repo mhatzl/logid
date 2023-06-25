@@ -1,16 +1,16 @@
+use crate::{
+    log_id::LogLevel,
+    logging::{filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent},
+    new_log_id,
+};
 use evident::{
     event::{filter::Filter, intermediary::IntermediaryEvent},
     this_origin,
 };
-use logid_core::{
-    log_id::LogLevel,
-    logging::{filter::LogFilter, intermediary_event::IntermediaryLogEvent},
-    new_log_id,
-};
 
 #[test]
 fn logging_turned_off() {
-    let filter = LogFilter::new("off");
+    let filter = InnerLogFilter::new("off");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -22,7 +22,7 @@ fn logging_turned_off() {
 
 #[test]
 fn empty_filter_means_logging_turned_off() {
-    let filter = LogFilter::new("");
+    let filter = InnerLogFilter::new("");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -34,7 +34,7 @@ fn empty_filter_means_logging_turned_off() {
 
 #[test]
 fn only_allow_error() {
-    let filter = LogFilter::new("error");
+    let filter = InnerLogFilter::new("error");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -53,7 +53,7 @@ fn only_allow_error() {
 
 #[test]
 fn allow_error_and_warning() {
-    let filter = LogFilter::new("warn");
+    let filter = InnerLogFilter::new("warn");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -79,7 +79,7 @@ fn allow_error_and_warning() {
 
 #[test]
 fn allow_error_warning_and_info() {
-    let filter = LogFilter::new("info");
+    let filter = InnerLogFilter::new("info");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -112,7 +112,7 @@ fn allow_error_warning_and_info() {
 
 #[test]
 fn allow_error_warning_info_and_debug() {
-    let filter = LogFilter::new("debug");
+    let filter = InnerLogFilter::new("debug");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -152,7 +152,7 @@ fn allow_error_warning_info_and_debug() {
 
 #[test]
 fn allow_error_warning_info_debug_and_trace() {
-    let filter = LogFilter::new("trace");
+    let filter = InnerLogFilter::new("trace");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
@@ -192,7 +192,7 @@ fn allow_error_warning_info_debug_and_trace() {
 
 #[test]
 fn logging_on_equal_to_trace() {
-    let filter = LogFilter::new("on");
+    let filter = InnerLogFilter::new("on");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     let mut error_event = IntermediaryLogEvent::new(error_id, "", this_origin!());

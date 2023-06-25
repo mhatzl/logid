@@ -1,19 +1,19 @@
+use crate::{
+    log_id::LogLevel,
+    logging::{
+        event_entry::AddonKind, filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent,
+    },
+    new_log_id,
+};
 use evident::{
     event::{filter::Filter, intermediary::IntermediaryEvent},
     this_origin,
-};
-use logid_core::{
-    log_id::LogLevel,
-    logging::{
-        event_entry::AddonKind, filter::LogFilter, intermediary_event::IntermediaryLogEvent,
-    },
-    new_log_id,
 };
 
 #[test]
 fn allow_single_id_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = LogFilter::new(&format!(
+    let filter = InnerLogFilter::new(&format!(
         "on[{}::{}::{}(infos)]",
         log_id.get_crate_name(),
         log_id.get_module_path(),
@@ -39,7 +39,7 @@ fn allow_single_id_with_infos_addon() {
 #[test]
 fn allow_single_id_with_infos_and_origin_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = LogFilter::new(&format!(
+    let filter = InnerLogFilter::new(&format!(
         "on[{}::{}::{}(infos & origin)]",
         log_id.get_crate_name(),
         log_id.get_module_path(),
@@ -70,7 +70,7 @@ fn allow_single_id_with_infos_and_origin_addon() {
 #[test]
 fn allow_single_id_with_all_addons() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = LogFilter::new(&format!(
+    let filter = InnerLogFilter::new(&format!(
         "on[{}::{}::{}(all)]",
         log_id.get_crate_name(),
         log_id.get_module_path(),
@@ -119,7 +119,7 @@ fn allow_single_id_with_all_addons() {
 #[test]
 fn allow_module_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = LogFilter::new("logid-core::tests(infos) = error");
+    let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
 
     let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
@@ -140,7 +140,7 @@ fn allow_module_with_infos_addon() {
 #[test]
 fn allow_crate_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = LogFilter::new("logid-core(infos) = error");
+    let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
 
     let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
@@ -161,7 +161,7 @@ fn allow_crate_with_infos_addon() {
 #[test]
 fn allow_general_level_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = LogFilter::new("error(infos)");
+    let filter = InnerLogFilter::new("error(infos)");
 
     let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(

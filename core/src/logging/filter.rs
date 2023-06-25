@@ -1,8 +1,71 @@
+use std::sync::{Arc, RwLock};
+
 use evident::event::origin::Origin;
 
 use crate::log_id::{LogId, LogLevel};
 
 use super::event_entry::{AddonKind, LogEventEntry};
+
+#[derive(Default, Debug)]
+pub struct LogFilter {
+    filter: Arc<RwLock<InnerLogFilter>>,
+}
+
+impl LogFilter {
+    pub fn new() -> Self {
+        LogFilter {
+            filter: Arc::new(RwLock::new(InnerLogFilter::new(&filter_config()))),
+        }
+    }
+
+    pub fn set_filter(&self, config: &str) -> Result<(), FilterError> {
+        match self.filter.write() {
+            Ok(mut locked_filter) => {
+                locked_filter.replace(InnerLogFilter::new(config));
+            }
+            Err(_) => todo!(),
+        }
+
+        Ok(())
+    }
+
+    pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: &AddonKind) -> bool {
+        match self.filter.read() {
+            Ok(locked_filter) => locked_filter.allow_addon(id, origin, addon),
+            Err(_) => false,
+        }
+    }
+
+    pub fn show_origin_info(&self, id: LogId, origin: &Origin) -> bool {
+        match self.filter.read() {
+            Ok(locked_filter) => locked_filter.show_origin_info(id, origin),
+            Err(_) => false,
+        }
+    }
+}
+
+fn filter_config() -> String {
+    if cfg!(feature = "test_filter") {
+        return "trace(all)".to_string();
+    }
+
+    match std::env::var("LOGID_FILTER") {
+        Ok(config) => config,
+        Err(_) => "error".to_string(),
+    }
+}
+
+impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
+    fn allow_event(
+        &self,
+        event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
+    ) -> bool {
+        match self.filter.read() {
+            Ok(locked_filter) => locked_filter.allow_event(event),
+            Err(_) => false,
+        }
+    }
+}
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub enum AddonFilter {
@@ -274,7 +337,7 @@ impl LogIdModuleFilter {
 }
 
 #[derive(Default, Debug)]
-pub struct LogFilter {
+pub(super) struct InnerLogFilter {
     no_general_logging: bool,
     general_level: LogLevel,
     general_addons: Vec<AddonFilter>,
@@ -283,16 +346,16 @@ pub struct LogFilter {
     allowed_modules: Vec<LogIdModuleFilter>,
 }
 
-impl LogFilter {
+impl InnerLogFilter {
     pub fn new(filter: &str) -> Self {
         if filter.trim().is_empty() || filter.to_lowercase() == "off" {
-            return LogFilter {
+            return InnerLogFilter {
                 no_general_logging: true,
                 ..Default::default()
             };
         }
 
-        let mut log_filter = LogFilter {
+        let mut log_filter = InnerLogFilter {
             no_general_logging: true,
             general_level: LogLevel::Error,
             general_addons: Vec::new(),
@@ -325,6 +388,14 @@ impl LogFilter {
         log_filter
     }
 
+    fn replace(&mut self, other: Self) {
+        self.allowed_global_ids = other.allowed_global_ids;
+        self.allowed_modules = other.allowed_modules;
+        self.general_addons = other.general_addons;
+        self.general_level = other.general_level;
+        self.no_general_logging = other.no_general_logging;
+    }
+
     pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: &AddonKind) -> bool {
         let addon_filter = AddonFilter::from(addon);
 
@@ -348,7 +419,7 @@ impl LogFilter {
     }
 }
 
-impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
+impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
     fn allow_event(
         &self,
         event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
@@ -372,6 +443,7 @@ pub enum FilterError {
     ParsingLogId(String),
     ParsingAddons(String),
     ParsingModule(String),
+    SettingFilter,
 }
 
 impl std::error::Error for FilterError {}
@@ -387,6 +459,9 @@ impl std::fmt::Display for FilterError {
             }
             FilterError::ParsingModule(bad_module) => {
                 write!(f, "Could not parse module '{}'.", bad_module)
+            }
+            FilterError::SettingFilter => {
+                write!(f, "Could not set the new filter configuration.")
             }
         }
     }
