@@ -1,12 +1,20 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+// use criterion::{criterion_group, criterion_main};
+use criterion::{black_box, Criterion};
 use logid::{
     err, event_handler::LogEventHandlerBuilder, log, log_id::LogLevel,
-    logging::event_entry::AddonKind, DbgLogId, ErrLogId, InfoLogId, WarnLogId,
+    logging::event_entry::AddonKind, DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
 };
 
-criterion_main!(benches);
-criterion_group!(benches, bench_compare_advanced_logging);
-// criterion_group!(benches, bench_error_tracing, bench_error_logid);
+// criterion_main!(benches);
+// criterion_group!(benches, bench_compare_advanced_logging);
+// criterion_group!(
+//     name = benches;
+//     config = Criterion::default()
+//         .sample_size(10)
+//         .warm_up_time(std::time::Duration::from_millis(1))
+//         .measurement_time(std::time::Duration::from_millis(700));
+//     targets = bench_full_logid
+// );
 
 pub fn bench_error_tracing(c: &mut Criterion) {
     tracing_subscriber::fmt::init();
@@ -27,6 +35,30 @@ pub fn bench_error_logid(c: &mut Criterion) {
     c.bench_function("logid errors", |b| {
         b.iter(|| log!(err_id, "Trace an error."))
     });
+
+    log_handler.shutdown();
+}
+
+pub fn bench_full_logid(c: &mut Criterion) {
+    let _ = logid::set_filter!("trace(all)");
+
+    let log_handler = LogEventHandlerBuilder::new()
+        .to_stderr()
+        .all_log_events()
+        .build();
+
+    c.bench_function("full logid", |b| b.iter(|| {
+        log!(BenchError::Test, black_box("Logid error in full bench."), add: AddonKind::Info(black_box("Added info in full bench related to error trace.").to_string())
+        , add: AddonKind::Debug(black_box("Added debug info in full bench related to error trace.").to_string())
+        , add: AddonKind::Trace(black_box("Added trace info in full bench related to error trace.").to_string()));
+
+        let warn_event = log!(BenchWarn::Test, black_box("Logid warn in full bench."));
+        let info_event = log!(BenchInfo::Test, black_box("Logid info in full bench."), add: AddonKind::Related(warn_event));
+        let dbg_event = log!(BenchDbg::Test, black_box("Logid debug in full bench."), add: AddonKind::Related(info_event));
+        log!(BenchTrace::Test, black_box("Logid trace in full bench."), add: AddonKind::Related(dbg_event));
+
+        let _: Result<(), BenchError> = err!(BenchError::Test);
+    }));
 
     log_handler.shutdown();
 }
@@ -122,5 +154,10 @@ enum BenchInfo {
 
 #[derive(Debug, Clone, DbgLogId)]
 enum BenchDbg {
+    Test,
+}
+
+#[derive(Debug, Clone, TraceLogId)]
+enum BenchTrace {
     Test,
 }

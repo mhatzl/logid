@@ -1,24 +1,87 @@
-use std::{marker::PhantomData, sync::mpsc::Receiver, thread::JoinHandle};
-
-use logid_core::{
-    evident::event::Event,
-    log_id::LogId,
-    logging::{event_entry::LogEventEntry, intermediary_event::IntermediaryLogEvent, LOGGER},
+use std::{
+    marker::PhantomData,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::Receiver,
+        Arc,
+    },
+    thread::JoinHandle,
 };
+
+use colored::*;
+use logid_core::{
+    evident::event::{finalized::FinalizedEvent, Event},
+    log_id::{LogId, LogLevel, START_LOGGING, STOP_LOGGING},
+    logging::{event_entry::LogEventEntry, intermediary_event::IntermediaryLogEvent, LOGGER},
+    new_log_id,
+};
+
+const HANDLER_START_LOGGING: LogId = new_log_id!("HANDLER_START_LOGGING", LogLevel::Info);
+const HANDLER_STOP_LOGGING: LogId = new_log_id!("HANDLER_STOP_LOGGING", LogLevel::Info);
+const SHUTDOWN_HANDLER: LogId = new_log_id!("SHUTDOWN_HANDLER", LogLevel::Info);
 
 pub struct LogEventHandler {
     log_thread: JoinHandle<()>,
+    /// Start flag needed to have independent handler.
+    start: Arc<AtomicBool>,
+    /// Stop flag needed to have independent handler.
+    stop: Arc<AtomicBool>,
+    /// Shutdown flag needed to have independent handler.
+    shutdown: Arc<AtomicBool>,
+    /// Capture flag needed to have independent handler.
+    capturing: Arc<AtomicBool>,
 }
 
 impl LogEventHandler {
+    pub fn start(&self) {
+        self.start.store(true, Ordering::Release);
+
+        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+            HANDLER_START_LOGGING,
+            "Start logging on handler.",
+            crate::evident::this_origin!(),
+        )
+        .finalize();
+    }
+
+    pub fn stop(&self) {
+        self.stop.store(true, Ordering::Release);
+
+        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+            HANDLER_STOP_LOGGING,
+            "Stop logging on handler.",
+            crate::evident::this_origin!(),
+        )
+        .finalize();
+    }
+
     pub fn shutdown(self) {
-        crate::evident::event::set_event::<_, LogEventEntry, IntermediaryLogEvent>(
-            logid_core::log_id::STOP_LOGGING,
+        drop(self)
+    }
+
+    pub fn is_capturing(&self) -> bool {
+        self.capturing.load(Ordering::Acquire)
+    }
+}
+
+impl Drop for LogEventHandler {
+    fn drop(&mut self) {
+        self.shutdown.store(true, Ordering::Release);
+
+        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+            SHUTDOWN_HANDLER,
+            "Shutdown logging on handler.",
             crate::evident::this_origin!(),
         )
         .finalize();
 
-        let _ = self.log_thread.join();
+        // Note: 'join()' needs 'self', but drop() only provides `&mut self`
+        // Also in some rare timing issues the shutdown event is not received in the handler thread, if the main thread finished before sending the event to all listeners.
+        let mut safe_cnt = 0;
+        while !self.log_thread.is_finished() && safe_cnt < 10 {
+            std::thread::sleep(std::time::Duration::from_micros(5));
+            safe_cnt += 1;
+        }
     }
 }
 
@@ -43,7 +106,14 @@ pub struct LogEventHandlerBuilder<K> {
 impl LogEventHandlerBuilder<NoKind> {
     pub fn new() -> Self {
         LogEventHandlerBuilder {
-            log_ids: vec![logid_core::log_id::STOP_LOGGING],
+            // Note: Make sure control IDs are received by handler.
+            log_ids: vec![
+                logid_core::log_id::START_LOGGING,
+                logid_core::log_id::STOP_LOGGING,
+                HANDLER_START_LOGGING,
+                HANDLER_STOP_LOGGING,
+                SHUTDOWN_HANDLER,
+            ],
             handler: Vec::new(),
             sub_kind: PhantomData,
         }
@@ -89,40 +159,125 @@ impl LogEventHandlerBuilder<NoKind> {
     }
 }
 
-impl LogEventHandlerBuilder<AllLogs> {
-    pub fn build(self) -> LogEventHandler {
-        let handle = std::thread::spawn(|| {
-            if let Ok(recv) = LOGGER.subscribe_to_all_events() {
-                event_listener(self.handler, recv.get_receiver());
+impl<K> LogEventHandlerBuilder<K> {
+    fn create(self, subscribe_specific: bool) -> LogEventHandler {
+        let start = Arc::new(AtomicBool::new(false));
+        let moved_start = start.clone();
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let moved_stop = stop.clone();
+
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let moved_shutdown = shutdown.clone();
+
+        let capturing = Arc::new(AtomicBool::new(true));
+        let moved_capturing = capturing.clone();
+
+        let thread_setup = Arc::new(AtomicBool::new(false));
+        let moved_thread_setup = thread_setup.clone();
+
+        let log_thread = std::thread::spawn(move || {
+            let sub_res = if subscribe_specific {
+                LOGGER.subscribe_to_many(self.log_ids)
+            } else {
+                LOGGER.subscribe_to_all_events()
+            };
+
+            match sub_res {
+                Ok(recv) => {
+                    // Note: Setup-flag in both cases to make sure possible lazy eval of result is no problem.
+                    moved_thread_setup.store(true, Ordering::Relaxed);
+
+                    event_listener(
+                        self.handler,
+                        recv.get_receiver(),
+                        moved_start,
+                        moved_stop,
+                        moved_shutdown,
+                        moved_capturing,
+                    );
+                }
+                Err(_) => {
+                    moved_thread_setup.store(true, Ordering::Relaxed);
+                    eprintln!(
+                        "{}: Could not create LOGGER subscription for the LogEventHandler.",
+                        "ERR".bold().red()
+                    );
+                }
             }
         });
 
-        LogEventHandler { log_thread: handle }
+        // Note: Needed hack to ensure thread above is created before continuing.
+        // This is done by forcing a context switch before returning.
+        // Without this, events may not be received correctly if set immediately after build().
+        //
+        // Note: 'yield_now()' alone is not enough, because the OS might not accept our suggestion.
+        while !thread_setup.load(Ordering::Relaxed) {
+            std::thread::yield_now();
+        }
+
+        LogEventHandler {
+            log_thread,
+            start,
+            stop,
+            shutdown,
+            capturing,
+        }
+    }
+}
+
+impl LogEventHandlerBuilder<AllLogs> {
+    pub fn build(self) -> LogEventHandler {
+        self.create(false)
     }
 }
 
 impl LogEventHandlerBuilder<SpecificLogs> {
     pub fn build(self) -> LogEventHandler {
-        let handle = std::thread::spawn(|| {
-            if let Ok(recv) = LOGGER.subscribe_to_many(self.log_ids) {
-                event_listener(self.handler, recv.get_receiver());
-            }
-        });
-
-        LogEventHandler { log_thread: handle }
+        self.create(true)
     }
 }
 
 fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     mut fns: Vec<F>,
     recv: &Receiver<Event<LogId, LogEventEntry>>,
+    start: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
+    shutdown: Arc<AtomicBool>,
+    capturing: Arc<AtomicBool>,
 ) {
     while let Ok(log_event) = recv.recv() {
-        if log_event.get_id() == &logid_core::log_id::STOP_LOGGING {
+        let id = log_event.get_id();
+
+        if id == &STOP_LOGGING && capturing.load(Ordering::Acquire) {
+            capturing.store(false, Ordering::Release);
+            continue;
+        } else if (id == &HANDLER_STOP_LOGGING && stop.load(Ordering::Acquire))
+            && capturing.load(Ordering::Acquire)
+        {
+            capturing.store(false, Ordering::Release);
+            stop.store(false, Ordering::Release);
+            continue;
+        } else if id == &START_LOGGING && !capturing.load(Ordering::Acquire) {
+            capturing.store(true, Ordering::Release);
+            continue;
+        } else if (id == &HANDLER_START_LOGGING && start.load(Ordering::Acquire))
+            && !capturing.load(Ordering::Acquire)
+        {
+            capturing.store(true, Ordering::Release);
+            start.store(false, Ordering::Release);
+            continue;
+        } else if capturing.load(Ordering::Acquire)
+            && id != &HANDLER_START_LOGGING
+            && id != &HANDLER_STOP_LOGGING
+            && id != &SHUTDOWN_HANDLER
+            && id != &STOP_LOGGING
+            && id != &START_LOGGING
+        {
+            fns.iter_mut().for_each(|f| f(log_event.clone()));
+        } else if id == &SHUTDOWN_HANDLER && shutdown.load(Ordering::Acquire) {
             break;
         }
-
-        fns.iter_mut().for_each(|f| f(log_event.clone()));
     }
 }
 
@@ -136,12 +291,31 @@ fn stdout_writer(log_event: Event<LogId, LogEventEntry>) {
 
 fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
     let id = log_event.get_id();
-    let mut content = format!("{}: {}\n", id.get_log_level(), log_event.get_msg());
+    let level = id.get_log_level();
+    let mut content = format!("{}: {}\n", colored_level(level), log_event.get_msg());
 
     if let Some(filter) = LOGGER.get_filter() {
         let origin = log_event.get_origin();
+
+        if filter.show_id(*id, origin) {
+            content.push_str(&format!(
+                "{} {}: id='{}::{}::{}', entry='{}'\n",
+                colored_addon_start(level),
+                "Event".bold(),
+                id.get_crate_name(),
+                id.get_module_path(),
+                id.get_identifier(),
+                log_event.get_entry_id(),
+            ));
+        }
+
         if filter.show_origin_info(*id, origin) {
-            content.push_str(&format!("|--> Origin: {}\n", origin));
+            content.push_str(&format!(
+                "{} {}: {}\n",
+                colored_addon_start(level),
+                "Origin".bold(),
+                origin
+            ));
         }
     }
 
@@ -150,30 +324,60 @@ fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
     // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
 
     for info in entry.get_infos() {
-        content.push_str(&format!("|--> Info: {}\n", info));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Info".bold().color(get_level_color(LogLevel::Info)),
+            info
+        ));
     }
 
     for debug in entry.get_debugs() {
-        content.push_str(&format!("|--> Debug: {}\n", debug));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Debug".bold().color(get_level_color(LogLevel::Debug)),
+            debug
+        ));
     }
 
     for trace in entry.get_traces() {
-        content.push_str(&format!("|--> Trace: {}\n", trace));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Trace".bold().color(get_level_color(LogLevel::Trace)),
+            trace
+        ));
     }
 
     for related in entry.get_related() {
-        content.push_str(&format!("|--> Related: {}\n", related));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Related".bold(),
+            colored_related(related)
+        ));
     }
 
     #[cfg(feature = "diagnostics")]
     for diag in entry.get_diagnostics() {
         // TODO: make diag output prettier
-        content.push_str(&format!("|--> Diagnostics: {}\n", diag.message));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Diagnostics".bold(),
+            diag.message
+        ));
     }
 
     #[cfg(feature = "payloads")]
     for payload in entry.get_payloads() {
-        content.push_str(&format!("|--> Payload: {}\n", payload));
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Payload".bold(),
+            payload
+        ));
     }
 
     if to_stderr {
@@ -181,4 +385,38 @@ fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
     } else {
         print!("{}", content);
     };
+}
+
+fn colored_level(level: LogLevel) -> String {
+    level
+        .to_string()
+        .bold()
+        .color(get_level_color(level))
+        .to_string()
+}
+
+fn get_level_color(level: LogLevel) -> colored::Color {
+    match level {
+        LogLevel::Error => Color::Red,
+        LogLevel::Warn => Color::Yellow,
+        LogLevel::Info => Color::Green,
+        LogLevel::Debug => Color::Blue,
+        LogLevel::Trace => Color::Cyan,
+    }
+}
+
+fn colored_addon_start(level: LogLevel) -> String {
+    "|-->".color(get_level_color(level)).to_string()
+}
+
+fn colored_related(related: &FinalizedEvent<LogId>) -> String {
+    let id = related.event_id;
+    format!(
+        "id='{}: {}::{}::{}', entry='{}'",
+        colored_level(id.get_log_level()),
+        id.get_crate_name(),
+        id.get_module_path(),
+        id.get_identifier(),
+        related.entry_id
+    )
 }

@@ -13,13 +13,29 @@ pub struct LogId {
 
 impl evident::publisher::Id for LogId {}
 
-impl evident::publisher::StopCapturing for LogId {
-    fn stop_capturing(id: &Self) -> bool {
+impl evident::publisher::CaptureControl for LogId {
+    fn start(id: &Self) -> bool {
+        id == &START_LOGGING
+    }
+
+    fn start_id() -> Self {
+        START_LOGGING
+    }
+
+    fn stop(id: &Self) -> bool {
         id == &STOP_LOGGING
+    }
+
+    fn stop_id() -> Self {
+        STOP_LOGGING
     }
 }
 
-/// Notify listeners to stop logging.
+/// Notify LOGGER and listeners to start logging.
+///
+/// **Note:** Filter does not affect capturing of this LogId. It is up to the handler to decide wether to filter it or not.
+pub const START_LOGGING: LogId = crate::new_log_id!("START_LOGGING", LogLevel::Info);
+/// Notify LOGGER and listeners to stop logging.
 ///
 /// **Note:** Filter does not affect capturing of this LogId. It is up to the handler to decide wether to filter it or not.
 pub const STOP_LOGGING: LogId = crate::new_log_id!("STOP_LOGGING", LogLevel::Info);
@@ -109,7 +125,7 @@ impl std::fmt::Display for LogLevel {
 /// ```
 #[macro_export]
 macro_rules! new_log_id {
-    ($identifier:literal, $log_level:expr) => {
+    ($identifier:expr, $log_level:expr) => {
         $crate::log_id::LogId::new(
             env!("CARGO_PKG_NAME"),
             module_path!(),
