@@ -246,37 +246,49 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     shutdown: Arc<AtomicBool>,
     capturing: Arc<AtomicBool>,
 ) {
-    while let Ok(log_event) = recv.recv() {
-        let id = log_event.get_id();
+    let mut shutdown_received = false;
 
-        if id == &STOP_LOGGING && capturing.load(Ordering::Acquire) {
-            capturing.store(false, Ordering::Release);
-            continue;
-        } else if (id == &HANDLER_STOP_LOGGING && stop.load(Ordering::Acquire))
-            && capturing.load(Ordering::Acquire)
-        {
-            capturing.store(false, Ordering::Release);
-            stop.store(false, Ordering::Release);
-            continue;
-        } else if id == &START_LOGGING && !capturing.load(Ordering::Acquire) {
-            capturing.store(true, Ordering::Release);
-            continue;
-        } else if (id == &HANDLER_START_LOGGING && start.load(Ordering::Acquire))
-            && !capturing.load(Ordering::Acquire)
-        {
-            capturing.store(true, Ordering::Release);
-            start.store(false, Ordering::Release);
-            continue;
-        } else if capturing.load(Ordering::Acquire)
-            && id != &HANDLER_START_LOGGING
-            && id != &HANDLER_STOP_LOGGING
-            && id != &SHUTDOWN_HANDLER
-            && id != &STOP_LOGGING
-            && id != &START_LOGGING
-        {
-            fns.iter_mut().for_each(|f| f(log_event.clone()));
-        } else if id == &SHUTDOWN_HANDLER && shutdown.load(Ordering::Acquire) {
-            break;
+    while !shutdown_received {
+        if capturing.load(Ordering::Acquire) {
+            while let Ok(log_event) = recv.recv() {
+                let id = log_event.get_id();
+
+                // Note: Due to channel buffer, handler flags might already be set, but not all events are processed => required check on flag AND event id
+
+                if id == &STOP_LOGGING {
+                    capturing.store(false, Ordering::Release);
+                    break;
+                } else if stop.load(Ordering::Acquire) && id == &HANDLER_STOP_LOGGING {
+                    stop.store(false, Ordering::Release);
+                    capturing.store(false, Ordering::Release);
+                    break;
+                } else if shutdown.load(Ordering::Acquire) && id == &SHUTDOWN_HANDLER {
+                    shutdown_received = true;
+                    break;
+                } else if id != &HANDLER_START_LOGGING
+                    && id != &HANDLER_STOP_LOGGING
+                    && id != &SHUTDOWN_HANDLER
+                    && id != &START_LOGGING
+                {
+                    fns.iter_mut().for_each(|f| f(log_event.clone()));
+                }
+            }
+        } else {
+            while let Ok(log_event) = recv.recv() {
+                let id = log_event.get_id();
+
+                if id == &START_LOGGING {
+                    capturing.store(true, Ordering::Release);
+                    break;
+                } else if start.load(Ordering::Acquire) && id == &HANDLER_START_LOGGING {
+                    start.store(false, Ordering::Release);
+                    capturing.store(true, Ordering::Release);
+                    break;
+                } else if shutdown.load(Ordering::Acquire) && id == &SHUTDOWN_HANDLER {
+                    shutdown_received = true;
+                    break;
+                }
+            }
         }
     }
 }
