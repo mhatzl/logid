@@ -12,12 +12,14 @@ fn main() {
     let handler = LogEventHandlerBuilder::new()
         .to_stderr()
         .all_log_events()
-        .build();
+        .build()
+        .unwrap();
 
     let handler2 = LogEventHandlerBuilder::new()
         // .to_stderr()
         .all_log_events()
-        .build();
+        .build()
+        .unwrap();
 
     let start_time = std::time::Instant::now();
 

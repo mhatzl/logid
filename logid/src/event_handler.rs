@@ -161,7 +161,7 @@ impl LogEventHandlerBuilder<NoKind> {
 }
 
 impl<K> LogEventHandlerBuilder<K> {
-    fn create(self, subscribe_specific: bool) -> LogEventHandler {
+    fn create(self, subscribe_specific: bool) -> Result<LogEventHandler, LogEventHandlerError> {
         let start = Arc::new(AtomicBool::new(false));
         let moved_start = start.clone();
 
@@ -174,21 +174,15 @@ impl<K> LogEventHandlerBuilder<K> {
         let capturing = Arc::new(AtomicBool::new(true));
         let moved_capturing = capturing.clone();
 
-        let thread_setup = Arc::new(AtomicBool::new(false));
-        let moved_thread_setup = thread_setup.clone();
+        let sub_res = if subscribe_specific {
+            LOGGER.subscribe_to_many(self.log_ids)
+        } else {
+            LOGGER.subscribe_to_all_events()
+        };
 
-        let log_thread = std::thread::spawn(move || {
-            let sub_res = if subscribe_specific {
-                LOGGER.subscribe_to_many(self.log_ids)
-            } else {
-                LOGGER.subscribe_to_all_events()
-            };
-
-            match sub_res {
-                Ok(recv) => {
-                    // Note: Setup-flag in both cases to make sure possible lazy eval of result is no problem.
-                    moved_thread_setup.store(true, Ordering::Relaxed);
-
+        match sub_res {
+            Ok(recv) => {
+                let log_thread = std::thread::spawn(move || {
                     event_listener(
                         self.handler,
                         recv.get_receiver(),
@@ -197,45 +191,46 @@ impl<K> LogEventHandlerBuilder<K> {
                         moved_shutdown,
                         moved_capturing,
                     );
-                }
-                Err(_) => {
-                    moved_thread_setup.store(true, Ordering::Relaxed);
-                    eprintln!(
-                        "{}: Could not create LOGGER subscription for the LogEventHandler.",
-                        "ERR".bold().red()
-                    );
-                }
+                });
+
+                Ok(LogEventHandler {
+                    log_thread,
+                    start,
+                    stop,
+                    shutdown,
+                    capturing,
+                })
             }
-        });
-
-        // Note: Needed hack to ensure thread above is created before continuing.
-        // This is done by forcing a context switch before returning.
-        // Without this, events may not be received correctly if set immediately after build().
-        //
-        // Note: 'yield_now()' alone is not enough, because the OS might not accept our suggestion.
-        while !thread_setup.load(Ordering::Relaxed) {
-            std::thread::yield_now();
-        }
-
-        LogEventHandler {
-            log_thread,
-            start,
-            stop,
-            shutdown,
-            capturing,
+            Err(_) => Err(LogEventHandlerError::CreatingSubscription),
         }
     }
 }
 
 impl LogEventHandlerBuilder<AllLogs> {
-    pub fn build(self) -> LogEventHandler {
+    pub fn build(self) -> Result<LogEventHandler, LogEventHandlerError> {
         self.create(false)
     }
 }
 
 impl LogEventHandlerBuilder<SpecificLogs> {
-    pub fn build(self) -> LogEventHandler {
+    pub fn build(self) -> Result<LogEventHandler, LogEventHandlerError> {
         self.create(true)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum LogEventHandlerError {
+    CreatingSubscription,
+}
+
+impl std::fmt::Display for LogEventHandlerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LogEventHandlerError::CreatingSubscription => write!(
+                f,
+                "Could not create LOGGER subscription for the LogEventHandler."
+            ),
+        }
     }
 }
 

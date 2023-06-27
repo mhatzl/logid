@@ -25,7 +25,7 @@ pub fn bench_error_tracing(c: &mut Criterion) {
 }
 
 pub fn bench_error_logid(c: &mut Criterion) {
-    let log_handler = LogEventHandlerBuilder::new()
+    let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()
         .all_log_events()
         .build();
@@ -35,14 +35,12 @@ pub fn bench_error_logid(c: &mut Criterion) {
     c.bench_function("logid errors", |b| {
         b.iter(|| log!(err_id, "Trace an error."))
     });
-
-    log_handler.shutdown();
 }
 
 pub fn bench_full_logid(c: &mut Criterion) {
     let _ = logid::set_filter!("trace(all)");
 
-    let log_handler = LogEventHandlerBuilder::new()
+    let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()
         .all_log_events()
         .build();
@@ -59,14 +57,12 @@ pub fn bench_full_logid(c: &mut Criterion) {
 
         let _: Result<(), BenchError> = err!(BenchError::Test);
     }));
-
-    log_handler.shutdown();
 }
 
 pub fn bench_compare(c: &mut Criterion) {
     tracing_subscriber::fmt::init();
 
-    let log_handler = LogEventHandlerBuilder::new()
+    let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()
         .all_log_events()
         .build();
@@ -84,8 +80,6 @@ pub fn bench_compare(c: &mut Criterion) {
     });
 
     bench_group.finish();
-
-    log_handler.shutdown();
 }
 
 pub fn bench_compare_advanced_logging(c: &mut Criterion) {
@@ -93,7 +87,7 @@ pub fn bench_compare_advanced_logging(c: &mut Criterion) {
 
     let _ = logid::set_filter!("debug(infos)");
 
-    let log_handler = LogEventHandlerBuilder::new()
+    let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()
         .all_log_events()
         .build();
@@ -105,8 +99,6 @@ pub fn bench_compare_advanced_logging(c: &mut Criterion) {
     bench_group.bench_function("logid", |b| b.iter(|| advanced_logid()));
 
     bench_group.finish();
-
-    log_handler.shutdown();
 }
 
 fn advanced_logid() -> Result<(), BenchError> {
