@@ -9,7 +9,7 @@ use tracing::metadata::LevelFilter;
 
 criterion_main!(benches);
 // criterion_group!(benches, bench_compare);
-criterion_group!(benches, bench_compare_advanced_logging);
+criterion_group!(benches, bench_compare_advanced_logging, bench_error_logid);
 
 pub fn bench_error_tracing(c: &mut Criterion) {
     tracing_subscriber::fmt::init();
@@ -57,10 +57,10 @@ pub fn bench_compare(c: &mut Criterion) {
 
 pub fn bench_compare_advanced_logging(c: &mut Criterion) {
     tracing_subscriber::fmt::fmt()
-        .with_max_level(LevelFilter::TRACE)
+        .with_max_level(LevelFilter::DEBUG)
         .init();
 
-    let _ = logid::set_filter!("trace(infos)");
+    let _ = logid::set_filter!("debug(infos)");
 
     let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()
