@@ -22,6 +22,13 @@ pub struct LogEventEntry {
     /// Code position where the log-id entry was created
     pub(crate) origin: Origin,
 
+    /// List of hints for this log-id entry
+    #[cfg(feature = "hint_note")]
+    pub(crate) hints: Vec<String>,
+    /// List of notes for this log-id entry
+    #[cfg(feature = "hint_note")]
+    pub(crate) notes: Vec<String>,
+
     /// List of diagnostics for this log-id entry
     #[cfg(feature = "diagnostics")]
     pub(crate) diagnostics: Vec<crate::lsp_types::Diagnostic>,
@@ -42,6 +49,11 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
             traces: Vec::new(),
             related: Vec::new(),
             origin,
+
+            #[cfg(feature = "hint_note")]
+            hints: Vec::new(),
+            #[cfg(feature = "hint_note")]
+            notes: Vec::new(),
 
             #[cfg(feature = "diagnostics")]
             diagnostics: Vec::new(),
@@ -108,6 +120,16 @@ impl LogEventEntry {
         &self.related
     }
 
+    #[cfg(feature = "hint_note")]
+    pub fn get_hints(&self) -> &Vec<String> {
+        &self.hints
+    }
+
+    #[cfg(feature = "hint_note")]
+    pub fn get_notes(&self) -> &Vec<String> {
+        &self.notes
+    }
+
     #[cfg(feature = "diagnostics")]
     pub fn get_diagnostics(&self) -> &Vec<crate::lsp_types::Diagnostic> {
         &self.diagnostics
@@ -126,6 +148,11 @@ pub enum AddonKind {
     Debug(String),
     Trace(String),
     Related(FinalizedEvent<LogId>),
+
+    #[cfg(feature = "hint_note")]
+    Hint(String),
+    #[cfg(feature = "hint_note")]
+    Note(String),
 
     #[cfg(feature = "diagnostics")]
     Diagnostic(crate::lsp_types::Diagnostic),

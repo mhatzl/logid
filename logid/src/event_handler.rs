@@ -341,6 +341,15 @@ fn console_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool) 
 
     // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
 
+    for related in entry.get_related() {
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Related".bold(),
+            colored_related(related)
+        ));
+    }
+
     for info in entry.get_infos() {
         content.push_str(&format!(
             "{} {}: {}\n",
@@ -383,12 +392,33 @@ fn console_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool) 
         ));
     }
 
-    for related in entry.get_related() {
+    #[cfg(feature = "hint_note")]
+    for hint in entry.get_hints() {
         content.push_str(&format!(
             "{} {}: {}\n",
             colored_addon_start(level),
-            "Related".bold(),
-            colored_related(related)
+            "Hint".bold(),
+            format_lines(
+                hint.lines(),
+                hint.len(),
+                get_addon_indent("Hint"),
+                get_level_color(level)
+            )
+        ));
+    }
+
+    #[cfg(feature = "hint_note")]
+    for notes in entry.get_notes() {
+        content.push_str(&format!(
+            "{} {}: {}\n",
+            colored_addon_start(level),
+            "Note".bold(),
+            format_lines(
+                notes.lines(),
+                notes.len(),
+                get_addon_indent("Note"),
+                get_level_color(level)
+            )
         ));
     }
 

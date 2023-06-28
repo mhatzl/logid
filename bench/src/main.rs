@@ -78,7 +78,9 @@ fn bench_full_logid() -> Result<(), BenchError> {
     let info_event = log!(
         BenchInfo::Test,
         "Logid info in full bench.",
-        add: AddonKind::Related(warn_event)
+        add: AddonKind::Related(warn_event),
+        add: AddonKind::Hint("Some hint".to_string()),
+        add: AddonKind::Note("Some note".to_string())
     );
     let dbg_event = log!(
         BenchDbg::Test,
