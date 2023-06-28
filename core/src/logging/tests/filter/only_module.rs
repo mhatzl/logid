@@ -1,28 +1,23 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent},
+    logging::{filter::InnerLogFilter, tests::filter::test_event},
     new_log_id,
 };
-use evident::{
-    event::{filter::Filter, intermediary::IntermediaryEvent},
-    this_origin,
-};
+use evident::{event::filter::Filter, this_origin};
 
 #[test]
 fn single_module() {
     let filter = InnerLogFilter::new("logid-core::logid_core::logging = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
-    let mut log_event = IntermediaryLogEvent::new(warn_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(warn_id, this_origin!())),
         "Warn level LogId not allowed by filter."
     );
 
     let info_id = new_log_id!("info_id", LogLevel::Info);
-    let mut log_event = IntermediaryLogEvent::new(info_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(info_id, this_origin!())),
         "Info level LogId allowed by filter."
     );
 }
@@ -32,16 +27,14 @@ fn only_crate_name() {
     let filter = InnerLogFilter::new("logid-core = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
-    let mut log_event = IntermediaryLogEvent::new(warn_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(warn_id, this_origin!())),
         "Warn level LogId not allowed by filter."
     );
 
     let info_id = new_log_id!("info_id", LogLevel::Info);
-    let mut log_event = IntermediaryLogEvent::new(info_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(info_id, this_origin!())),
         "Info level LogId allowed by filter."
     );
 }
@@ -53,16 +46,14 @@ fn multiple_modules() {
     );
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
-    let mut log_event = IntermediaryLogEvent::new(warn_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(warn_id, this_origin!())),
         "Warn level LogId not allowed by filter."
     );
 
     let info_id = new_log_id!("info_id", LogLevel::Info);
-    let mut log_event = IntermediaryLogEvent::new(info_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(info_id, this_origin!())),
         "Info level LogId allowed by filter."
     );
 }
@@ -74,16 +65,14 @@ fn module_with_id() {
     );
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
-    let mut log_event = IntermediaryLogEvent::new(warn_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(warn_id, this_origin!())),
         "Warn level LogId allowed by filter."
     );
 
     let info_id = new_log_id!("info_id", LogLevel::Info);
-    let mut log_event = IntermediaryLogEvent::new(info_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(info_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 }
@@ -95,16 +84,14 @@ fn module_with_id_allowed_only() {
     );
 
     let error_id = new_log_id!("error_id", LogLevel::Error);
-    let mut log_event = IntermediaryLogEvent::new(error_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(error_id, this_origin!())),
         "Error level LogId allowed by filter."
     );
 
     let info_id = new_log_id!("info_id", LogLevel::Info);
-    let mut log_event = IntermediaryLogEvent::new(info_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(info_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 }

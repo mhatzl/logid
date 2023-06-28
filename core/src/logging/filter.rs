@@ -63,10 +63,7 @@ fn filter_config() -> String {
 }
 
 impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
-    fn allow_event(
-        &self,
-        event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
-    ) -> bool {
+    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
         match self.filter.read() {
             Ok(locked_filter) => locked_filter.allow_event(event),
             Err(_) => false,
@@ -441,10 +438,7 @@ impl InnerLogFilter {
 }
 
 impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
-    fn allow_event(
-        &self,
-        event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
-    ) -> bool {
+    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
         // Note: event handler creates unique LogIds per handler => filter on origin
         if event
             .get_entry()
