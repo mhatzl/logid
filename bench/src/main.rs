@@ -1,6 +1,6 @@
 use logid::{
     err,
-    event_handler::LogEventHandlerBuilder,
+    event_handler::builder::LogEventHandlerBuilder,
     log,
     logging::{event_entry::AddonKind, LOGGER},
     DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
