@@ -42,6 +42,13 @@ impl LogFilter {
             Err(_) => false,
         }
     }
+
+    pub fn show_id(&self, id: LogId, origin: &Origin) -> bool {
+        match self.filter.read() {
+            Ok(locked_filter) => locked_filter.show_id(id, origin),
+            Err(_) => false,
+        }
+    }
 }
 
 fn filter_config() -> String {
@@ -70,10 +77,11 @@ impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
 #[derive(Default, Debug, PartialEq, Eq)]
 pub enum AddonFilter {
     #[default]
+    Id,
+    Origin,
     Infos,
     Debugs,
     Traces,
-    Origin,
     Related,
     AllAllowed,
 
@@ -106,10 +114,11 @@ impl TryFrom<&str> for AddonFilter {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let addon = match value {
+            "id" => AddonFilter::Id,
+            "origin" => AddonFilter::Origin,
             "infos" => AddonFilter::Infos,
             "debugs" => AddonFilter::Debugs,
             "traces" => AddonFilter::Traces,
-            "origin" => AddonFilter::Origin,
             "related" => AddonFilter::Related,
             "all" => AddonFilter::AllAllowed,
 
@@ -418,6 +427,17 @@ impl InnerLogFilter {
         addon_allowed(&self.allowed_global_ids, id, &addon_filter)
             || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
     }
+
+    pub fn show_id(&self, id: LogId, origin: &Origin) -> bool {
+        let addon_filter = AddonFilter::Id;
+
+        if !self.no_general_logging && self.general_addons.contains(&addon_filter) {
+            return true;
+        }
+
+        addon_allowed(&self.allowed_global_ids, id, &addon_filter)
+            || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
+    }
 }
 
 impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
@@ -425,6 +445,16 @@ impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
         &self,
         event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
     ) -> bool {
+        // Note: event handler creates unique LogIds per handler => filter on origin
+        if event
+            .get_entry()
+            .get_origin()
+            .module_path
+            .starts_with("logid::event_handler")
+        {
+            return true;
+        }
+
         // Note: `Error` starts at `0`
         if !self.no_general_logging && self.general_level >= event.get_event_id().log_level {
             return true;
@@ -525,10 +555,11 @@ fn get_addons(s: &mut String) -> Vec<AddonFilter> {
             for addon_part in addons_part.split('&') {
                 if let Ok(addon) = AddonFilter::try_from(addon_part.trim()) {
                     if addon == AddonFilter::AllAllowed {
+                        addons.push(AddonFilter::Id);
+                        addons.push(AddonFilter::Origin);
                         addons.push(AddonFilter::Infos);
                         addons.push(AddonFilter::Debugs);
                         addons.push(AddonFilter::Traces);
-                        addons.push(AddonFilter::Origin);
                         addons.push(AddonFilter::Related);
 
                         #[cfg(feature = "diagnostics")]

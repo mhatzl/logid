@@ -19,6 +19,6 @@ evident::create_static_publisher!(
     filter_type = LogFilter,
     filter = LogFilter::new(),
     capture_channel_bound = 1000,
-    subscription_channel_bound = 500,
-    non_blocking = true
+    subscription_channel_bound = 1000,
+    capture_mode = evident::publisher::CaptureMode::Blocking
 );
