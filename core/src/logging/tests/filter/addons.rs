@@ -2,6 +2,7 @@ use crate::{
     log_id::LogLevel,
     logging::{
         event_entry::AddonKind, filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent,
+        tests::filter::test_event,
     },
     new_log_id,
 };
@@ -20,9 +21,8 @@ fn allow_single_id_with_infos_addon() {
         log_id.get_identifier()
     ));
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -46,9 +46,8 @@ fn allow_single_id_with_infos_and_origin_addon() {
         log_id.get_identifier()
     ));
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -77,13 +76,13 @@ fn allow_single_id_with_related_addon() {
         log_id.get_identifier()
     ));
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
-    let finalized = log_event.finalize();
 
+    let log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
+    let finalized = log_event.finalize();
     assert!(
         filter.allow_addon(log_id, &this_origin!(), &AddonKind::Related(finalized)),
         "Related addon not allowed by filter."
@@ -100,9 +99,8 @@ fn allow_single_id_with_all_addons() {
         log_id.get_identifier()
     ));
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -144,9 +142,8 @@ fn allow_module_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
     let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
@@ -165,9 +162,8 @@ fn allow_crate_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
     let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
@@ -186,9 +182,8 @@ fn allow_general_level_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
     let filter = InnerLogFilter::new("error(infos)");
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 

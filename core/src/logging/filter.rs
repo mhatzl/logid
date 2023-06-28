@@ -11,6 +11,21 @@ pub struct LogFilter {
     filter: Arc<RwLock<InnerLogFilter>>,
 }
 
+/// Returns `true` if logid is configured to allow the given level.
+/// Debug and Trace levels must explicitly be allowed by enabling features `log_debugs` or `log_traces`.
+///
+/// Without using this function as early filter return, debug and trace logs would mostly go through all filter steps, which decreases performance.
+#[allow(unreachable_code)]
+fn allow_level(level: LogLevel) -> bool {
+    #[cfg(feature = "log_traces")]
+    return level <= LogLevel::Trace;
+
+    #[cfg(feature = "log_debugs")]
+    return level <= LogLevel::Debug;
+
+    level < LogLevel::Debug
+}
+
 impl LogFilter {
     pub fn new() -> Self {
         LogFilter {
@@ -30,6 +45,16 @@ impl LogFilter {
     }
 
     pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: &AddonKind) -> bool {
+        if !allow_level(id.log_level) {
+            return false;
+        } else if let Ok(addon_filter) = AddonFilter::try_from(addon) {
+            if addon_filter == AddonFilter::Debugs && !allow_level(LogLevel::Debug)
+                || addon_filter == AddonFilter::Traces && !allow_level(LogLevel::Trace)
+            {
+                return false;
+            }
+        }
+
         match self.filter.read() {
             Ok(locked_filter) => locked_filter.allow_addon(id, origin, addon),
             Err(_) => false,
@@ -63,10 +88,11 @@ fn filter_config() -> String {
 }
 
 impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
-    fn allow_event(
-        &self,
-        event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
-    ) -> bool {
+    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
+        if !allow_level(event.get_event_id().log_level) {
+            return false;
+        }
+
         match self.filter.read() {
             Ok(locked_filter) => locked_filter.allow_event(event),
             Err(_) => false,
@@ -441,10 +467,7 @@ impl InnerLogFilter {
 }
 
 impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
-    fn allow_event(
-        &self,
-        event: &mut impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>,
-    ) -> bool {
+    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
         // Note: event handler creates unique LogIds per handler => filter on origin
         if event
             .get_entry()

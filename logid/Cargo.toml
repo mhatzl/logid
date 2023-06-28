@@ -19,9 +19,11 @@ colored = "2"
 [features]
 diagnostics = ["logid-core/diagnostics"]
 payloads = ["logid-core/payloads"]
+log_debugs = ["logid-core/log_debugs"]
+log_traces = ["logid-core/log_traces"]
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-logid-core = { path = "../core", version = "0", features = ["test_filter"] }
+logid-core = { path = "../core", version = "0", features = ["log_debugs", "log_traces", "test_filter"] }

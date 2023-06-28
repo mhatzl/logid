@@ -20,5 +20,6 @@ evident::create_static_publisher!(
     filter = LogFilter::new(),
     capture_channel_bound = 1000,
     subscription_channel_bound = 1000,
-    capture_mode = evident::publisher::CaptureMode::Blocking
+    capture_mode = evident::publisher::CaptureMode::Blocking,
+    timestamp_kind = evident::publisher::EventTimestampKind::Captured
 );

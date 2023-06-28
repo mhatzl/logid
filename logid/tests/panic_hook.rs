@@ -63,7 +63,7 @@ mod panic_hook_tests {
         dbg!(event.get_entry());
 
         assert_eq!(
-            *event.get_id(),
+            *event.get_event_id(),
             std::convert::Into::<LogId>::into(CriticalInfo::Panic),
             "Received event has wrong LogId."
         );

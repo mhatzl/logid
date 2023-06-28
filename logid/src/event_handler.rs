@@ -95,7 +95,7 @@ pub struct AllLogs;
 #[derive(Default)]
 pub struct SpecificLogs;
 
-type Handler = Box<dyn FnMut(Event<LogId, LogEventEntry>) + std::marker::Send + 'static>;
+type Handler = Box<dyn FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static>;
 
 #[derive(Default)]
 pub struct LogEventHandlerBuilder<K> {
@@ -122,7 +122,7 @@ impl LogEventHandlerBuilder<NoKind> {
 
     pub fn add_handler(
         mut self,
-        handler: impl FnMut(Event<LogId, LogEventEntry>) + std::marker::Send + 'static,
+        handler: impl FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static,
     ) -> Self {
         self.handler.push(Box::new(handler));
         self
@@ -234,9 +234,9 @@ impl std::fmt::Display for LogEventHandlerError {
     }
 }
 
-fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
+fn event_listener<F: FnMut(Arc<Event<LogId, LogEventEntry>>)>(
     mut fns: Vec<F>,
-    recv: &Receiver<Event<LogId, LogEventEntry>>,
+    recv: &Receiver<Arc<Event<LogId, LogEventEntry>>>,
     start: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     shutdown: Arc<AtomicBool>,
@@ -247,7 +247,7 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     while !shutdown_received {
         if capturing.load(Ordering::Acquire) {
             while let Ok(log_event) = recv.recv() {
-                let id = log_event.get_id();
+                let id = log_event.get_event_id();
 
                 // Note: Due to channel buffer, handler flags might already be set, but not all events are processed => required check on flag AND event id
 
@@ -271,7 +271,7 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
             }
         } else {
             while let Ok(log_event) = recv.recv() {
-                let id = log_event.get_id();
+                let id = log_event.get_event_id();
 
                 if id == &START_LOGGING {
                     capturing.store(true, Ordering::Release);
@@ -289,16 +289,16 @@ fn event_listener<F: FnMut(Event<LogId, LogEventEntry>)>(
     }
 }
 
-fn stderr_writer(log_event: Event<LogId, LogEventEntry>) {
+fn stderr_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
     console_writer(log_event, true);
 }
 
-fn stdout_writer(log_event: Event<LogId, LogEventEntry>) {
+fn stdout_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
     console_writer(log_event, false);
 }
 
-fn console_writer(log_event: Event<LogId, LogEventEntry>, to_stderr: bool) {
-    let id = log_event.get_id();
+fn console_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool) {
+    let id = log_event.get_event_id();
     let level = id.get_log_level();
     let msg = log_event.get_msg();
     let mut content = format!(

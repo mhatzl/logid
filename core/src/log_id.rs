@@ -82,7 +82,7 @@ impl std::fmt::Display for LogId {
 }
 
 /// Log level a [`LogId`] may represent.
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
+#[derive(Debug, Default, PartialOrd, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
 pub enum LogLevel {
     Error = 0,
     Warn = 1,
@@ -90,12 +90,6 @@ pub enum LogLevel {
     #[default]
     Debug = 3,
     Trace = 4,
-}
-
-impl PartialOrd<LogLevel> for LogLevel {
-    fn partial_cmp(&self, other: &LogLevel) -> Option<std::cmp::Ordering> {
-        Some((*self as isize).cmp(&(*other as isize)))
-    }
 }
 
 impl std::fmt::Display for LogLevel {

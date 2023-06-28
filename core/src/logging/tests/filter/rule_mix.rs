@@ -1,12 +1,9 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent},
+    logging::{filter::InnerLogFilter, tests::filter::test_event},
     new_log_id,
 };
-use evident::{
-    event::{filter::Filter, intermediary::IntermediaryEvent},
-    this_origin,
-};
+use evident::{event::filter::Filter, this_origin};
 
 #[test]
 fn global_id_and_general_error() {
@@ -21,21 +18,18 @@ fn global_id_and_general_error() {
         log_id.get_identifier()
     ));
 
-    let mut log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
-    let mut log_event = IntermediaryLogEvent::new(err_id, "", this_origin!());
     assert!(
-        filter.allow_event(&mut log_event),
+        filter.allow_event(&test_event(err_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
-    let mut log_event = IntermediaryLogEvent::new(warn_id, "", this_origin!());
     assert!(
-        !filter.allow_event(&mut log_event),
+        !filter.allow_event(&test_event(warn_id, this_origin!())),
         "Warn level allowed by filter."
     );
 }
