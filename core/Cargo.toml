@@ -17,4 +17,6 @@ serde_json = { version = "1.0", optional = true }
 [features]
 diagnostics = ["lsp-types"]
 payloads = ["serde_json"]
+log_debugs = []
+log_traces = []
 test_filter = []
