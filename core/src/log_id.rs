@@ -2,8 +2,6 @@
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LogId {
-    pub(crate) crate_name: &'static str,
-
     pub(crate) module_path: &'static str,
 
     pub(crate) identifier: &'static str,
@@ -42,22 +40,17 @@ pub const STOP_LOGGING: LogId = crate::new_log_id!("STOP_LOGGING", LogLevel::Inf
 
 impl LogId {
     pub const fn new(
-        crate_name: &'static str,
         module_path: &'static str,
         identifier: &'static str,
         log_level: LogLevel,
     ) -> Self {
         LogId {
-            crate_name,
             module_path,
             identifier,
             log_level,
         }
     }
 
-    pub fn get_crate_name(&self) -> &'static str {
-        self.crate_name
-    }
     pub fn get_module_path(&self) -> &'static str {
         self.module_path
     }
@@ -75,8 +68,8 @@ impl std::fmt::Display for LogId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}: {}::{}::{}",
-            self.log_level, self.crate_name, self.module_path, self.identifier
+            "{}: {}::{}",
+            self.log_level, self.module_path, self.identifier
         )
     }
 }
@@ -120,12 +113,7 @@ impl std::fmt::Display for LogLevel {
 #[macro_export]
 macro_rules! new_log_id {
     ($identifier:expr, $log_level:expr) => {
-        $crate::log_id::LogId::new(
-            env!("CARGO_PKG_NAME"),
-            module_path!(),
-            $identifier,
-            $log_level,
-        )
+        $crate::log_id::LogId::new(module_path!(), $identifier, $log_level)
     };
 }
 
@@ -137,11 +125,6 @@ mod tests {
     fn create_log_id_with_macro() {
         let log_id = new_log_id!("custom_ident", LogLevel::Debug);
 
-        assert_eq!(
-            log_id.crate_name,
-            env!("CARGO_PKG_NAME"),
-            "Crate name was not set correctly using `log_id!()` macro."
-        );
         assert_eq!(
             log_id.module_path,
             module_path!(),

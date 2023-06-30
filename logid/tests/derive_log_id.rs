@@ -24,11 +24,6 @@ fn enum_into_log_id() {
     let third_enum_id: LogId = LogIdEnum::Third.into();
 
     assert_eq!(
-        first_enum_id.get_crate_name(),
-        env!("CARGO_PKG_NAME"),
-        "Derive set wrong crate name."
-    );
-    assert_eq!(
         first_enum_id.get_module_path(),
         module_path!(),
         "Derive set wrong module path."

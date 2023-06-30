@@ -239,10 +239,9 @@ fn get_colored_lbot(level: LogLevel) -> String {
 }
 
 fn get_event_string(id: &LogId, entry_id: &str) -> String {
-    let crate_name = id.get_crate_name();
     let module = id.get_module_path();
     let identifier = id.get_identifier();
-    format!("id='{crate_name}::{module}::{identifier}', entry='{entry_id}'")
+    format!("id='{module}::{identifier}', entry='{entry_id}'")
 }
 
 struct ContentBuilder {

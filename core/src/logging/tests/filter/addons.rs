@@ -15,8 +15,7 @@ use evident::{
 fn allow_single_id_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}(infos)]",
-        log_id.get_crate_name(),
+        "on[{}::{}(infos)]",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));
@@ -40,8 +39,7 @@ fn allow_single_id_with_infos_addon() {
 fn allow_single_id_with_infos_and_origin_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}(infos & origin)]",
-        log_id.get_crate_name(),
+        "on[{}::{}(infos & origin)]",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));
@@ -70,8 +68,7 @@ fn allow_single_id_with_infos_and_origin_addon() {
 fn allow_single_id_with_related_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}(related)]",
-        log_id.get_crate_name(),
+        "on[{}::{}(related)]",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));
@@ -93,8 +90,7 @@ fn allow_single_id_with_related_addon() {
 fn allow_single_id_with_all_addons() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}(all)]",
-        log_id.get_crate_name(),
+        "on[{}::{}(all)]",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));
@@ -164,7 +160,7 @@ fn allow_single_id_with_all_addons() {
 #[test]
 fn allow_module_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
+    let filter = InnerLogFilter::new("logid_core::logging(infos) = error");
 
     assert!(
         filter.allow_event(&test_event(log_id, this_origin!())),
@@ -184,7 +180,7 @@ fn allow_module_with_infos_addon() {
 #[test]
 fn allow_crate_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = InnerLogFilter::new("logid-core::logid_core(infos) = error");
+    let filter = InnerLogFilter::new("logid_core(infos) = error");
 
     assert!(
         filter.allow_event(&test_event(log_id, this_origin!())),

@@ -180,16 +180,13 @@ impl TryFrom<&str> for AddonFilter {
 
 #[derive(Default, Debug)]
 pub struct LogIdFilter {
-    crate_name: String,
     module_path: String,
     identifier: String,
 }
 
 impl PartialEq<LogId> for LogIdFilter {
     fn eq(&self, other: &LogId) -> bool {
-        self.crate_name == other.crate_name
-            && self.module_path == other.module_path
-            && self.identifier == other.identifier
+        self.module_path == other.module_path && self.identifier == other.identifier
     }
 }
 
@@ -197,68 +194,39 @@ impl TryFrom<&str> for LogIdFilter {
     type Error = FilterError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let mut parts = value.split("::");
+        let parts = value.split("::");
         let len = parts.clone().count();
+
         if len < 2 {
             return Err(FilterError::ParsingLogId(value.to_string()));
         }
 
-        let crate_name = parts
-            .next()
-            .ok_or(FilterError::ParsingLogId(value.to_string()))?
-            .trim();
-
-        if crate_name.is_empty() {
-            return Err(FilterError::ParsingLogId(value.to_string()));
-        }
-
-        if len == 2 {
-            // Form: <crate name>::<identifier>
-            let identifier = parts
-                .next()
-                .ok_or(FilterError::ParsingLogId(value.to_string()))?
-                .trim();
-
-            if identifier.is_empty() {
-                return Err(FilterError::ParsingLogId(value.to_string()));
-            }
-
-            return Ok(LogIdFilter {
-                crate_name: crate_name.to_string(),
-                identifier: identifier.to_string(),
-                ..Default::default()
-            });
-        }
-
-        // Form: <crate name>::<module path (might have more '::' between)>::<identifier>
+        // Form: <module path (might have more '::' between)>::<identifier>
 
         let mut module_parts = String::default();
+        let mut identifier = String::default();
 
-        for part in parts.clone().take(len - 2) {
+        for (i, part) in parts.enumerate() {
             if part.trim().is_empty() {
                 return Err(FilterError::ParsingLogId(value.to_string()));
             }
 
-            module_parts.push_str(part);
-            module_parts.push_str("::");
+            if i < len - 1 {
+                module_parts.push_str(part);
+                module_parts.push_str("::");
+            } else {
+                identifier.push_str(part);
+            }
         }
         let module_path = module_parts
             .strip_suffix("::")
             .ok_or(FilterError::ParsingLogId(value.to_string()))?;
 
-        // Skip module path parts, since iterator above was cloned
-        let mut parts = parts.skip(len - 2);
-        let identifier = parts
-            .next()
-            .ok_or(FilterError::ParsingLogId(value.to_string()))?
-            .trim();
-
-        if identifier.is_empty() || parts.next().is_some() {
+        if identifier.is_empty() {
             return Err(FilterError::ParsingLogId(value.to_string()));
         }
 
         Ok(LogIdFilter {
-            crate_name: crate_name.to_string(),
             module_path: module_path.to_string(),
             identifier: identifier.to_string(),
         })
@@ -288,7 +256,6 @@ impl TryFrom<&str> for LogIdAddonFilter {
 #[derive(Default, Debug)]
 pub struct LogIdModuleFilter {
     no_general_logging: bool,
-    origin_crate_name: String,
     origin_module_path: String,
     level: LogLevel,
     allowed_ids: Vec<LogIdAddonFilter>,
@@ -297,9 +264,6 @@ pub struct LogIdModuleFilter {
 
 impl LogIdModuleFilter {
     pub fn origin_in_module(&self, origin: &Origin) -> bool {
-        if self.origin_crate_name != origin.crate_name {
-            return false;
-        }
         origin.module_path.starts_with(&self.origin_module_path)
     }
 
@@ -328,16 +292,13 @@ impl LogIdModuleFilter {
         ids: Vec<LogIdAddonFilter>,
         addons: Vec<AddonFilter>,
     ) -> Result<Self, FilterError> {
-        let mut module_parts = s.split('=');
-        let len = module_parts.clone().count();
+        let mut module_filter = s.split('=');
+        let len = module_filter.clone().count();
         if len != 1 && len != 2 {
             return Err(FilterError::ParsingModule(s.to_string()));
         }
 
-        let mut origin_crate_name = String::new();
-        let mut origin_module_path = String::new();
-
-        let module = module_parts
+        let module = module_filter
             .next()
             .ok_or(FilterError::ParsingModule(s.to_string()))?
             .trim();
@@ -346,29 +307,17 @@ impl LogIdModuleFilter {
             return Err(FilterError::ParsingModule(s.to_string()));
         }
 
-        if let Some((crate_name, module_path)) = module.split_once("::") {
-            if crate_name.is_empty() || module_path.is_empty() {
-                return Err(FilterError::ParsingModule(s.to_string()));
-            }
-
-            origin_crate_name.push_str(crate_name);
-            origin_module_path.push_str(module_path);
-        } else {
-            origin_crate_name.push_str(module);
-        }
-
         if len == 1 {
             return Ok(LogIdModuleFilter {
                 no_general_logging: true,
-                origin_crate_name,
-                origin_module_path,
+                origin_module_path: module.to_string(),
                 allowed_ids: ids,
                 allowed_addons: addons,
                 ..Default::default()
             });
         }
 
-        let level_part = module_parts
+        let level_part = module_filter
             .next()
             .ok_or(FilterError::ParsingModule(s.to_string()))?
             .trim();
@@ -378,8 +327,7 @@ impl LogIdModuleFilter {
 
         Ok(LogIdModuleFilter {
             no_general_logging: false,
-            origin_crate_name,
-            origin_module_path,
+            origin_module_path: module.to_string(),
             level,
             allowed_ids: ids,
             allowed_addons: addons,
@@ -662,32 +610,10 @@ mod tests {
 
     #[test]
     fn valid_log_id_filter() {
-        let log_id_filter = LogIdFilter::try_from("my_crate::my_module::my_id").unwrap();
-
-        assert_eq!(
-            log_id_filter.crate_name, "my_crate",
-            "Crate name extraction was not correct"
-        );
-        assert_eq!(
-            log_id_filter.module_path, "my_module",
-            "Module path extraction was not correct"
-        );
-        assert_eq!(
-            log_id_filter.identifier, "my_id",
-            "Identifier extraction was not correct"
-        );
-    }
-
-    #[test]
-    fn valid_log_id_filter_without_module() {
         let log_id_filter = LogIdFilter::try_from("my_crate::my_id").unwrap();
 
         assert_eq!(
-            log_id_filter.crate_name, "my_crate",
-            "Crate name extraction was not correct"
-        );
-        assert_eq!(
-            log_id_filter.module_path, "",
+            log_id_filter.module_path, "my_crate",
             "Module path extraction was not correct"
         );
         assert_eq!(
@@ -697,37 +623,37 @@ mod tests {
     }
 
     #[test]
-    fn valid_log_id_filter_with_sub_module() {
+    fn valid_log_id_filter_with_one_submodule() {
+        let log_id_filter = LogIdFilter::try_from("my_crate::my_module::my_id").unwrap();
+
+        assert_eq!(
+            log_id_filter.module_path, "my_crate::my_module",
+            "Module path extraction was not correct"
+        );
+        assert_eq!(
+            log_id_filter.identifier, "my_id",
+            "Identifier extraction was not correct"
+        );
+    }
+
+    #[test]
+    fn valid_log_id_filter_with_submodule() {
         let log_id_filter =
             LogIdFilter::try_from("my_crate::my_module::sub_module::my_id").unwrap();
 
         assert_eq!(
-            log_id_filter.crate_name, "my_crate",
-            "Crate name extraction was not correct"
-        );
-        assert_eq!(
-            log_id_filter.module_path, "my_module::sub_module",
+            log_id_filter.module_path, "my_crate::my_module::sub_module",
             "Module path extraction was not correct"
         );
         assert_eq!(
             log_id_filter.identifier, "my_id",
             "Identifier extraction was not correct"
-        );
-    }
-
-    #[test]
-    fn invalid_log_id_filter_with_empty_crate_name() {
-        let log_id_filter = LogIdFilter::try_from("::my_module::my_id");
-
-        assert!(
-            log_id_filter.is_err(),
-            "Parsing invalid LogIdFilter did not result in error."
         );
     }
 
     #[test]
     fn invalid_log_id_filter_with_empty_module_path() {
-        let log_id_filter = LogIdFilter::try_from("my_crate::::my_id");
+        let log_id_filter = LogIdFilter::try_from("::my_id");
 
         assert!(
             log_id_filter.is_err(),
