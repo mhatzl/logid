@@ -131,9 +131,33 @@ fn allow_single_id_with_all_addons() {
         "Trace addon not allowed by filter."
     );
 
+    #[cfg(feature = "hint_note")]
+    assert!(
+        filter.allow_addon(
+            log_id,
+            &this_origin!(),
+            &AddonKind::Hint("Some info".to_string())
+        ),
+        "Hint addon not allowed by filter."
+    );
+    #[cfg(feature = "hint_note")]
+    assert!(
+        filter.allow_addon(
+            log_id,
+            &this_origin!(),
+            &AddonKind::Note("Some info".to_string())
+        ),
+        "Note addon not allowed by filter."
+    );
+
     assert!(
         filter.show_origin_info(log_id, &this_origin!()),
         "Origin info not allowed by filter."
+    );
+
+    assert!(
+        filter.show_id(log_id, &this_origin!()),
+        "Event info not allowed by filter."
     );
 }
 

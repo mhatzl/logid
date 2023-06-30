@@ -19,6 +19,7 @@ colored = "2"
 [features]
 diagnostics = ["logid-core/diagnostics"]
 payloads = ["logid-core/payloads"]
+hint_note = ["logid-core/hint_note"]
 log_debugs = ["logid-core/log_debugs"]
 log_traces = ["logid-core/log_traces"]
 

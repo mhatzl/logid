@@ -111,6 +111,11 @@ pub enum AddonFilter {
     Related,
     AllAllowed,
 
+    #[cfg(feature = "hint_note")]
+    Hint,
+    #[cfg(feature = "hint_note")]
+    Note,
+
     #[cfg(feature = "diagnostics")]
     Diagnostics,
 
@@ -125,6 +130,11 @@ impl From<&AddonKind> for AddonFilter {
             AddonKind::Debug(_) => AddonFilter::Debugs,
             AddonKind::Trace(_) => AddonFilter::Traces,
             AddonKind::Related(_) => AddonFilter::Related,
+
+            #[cfg(feature = "hint_note")]
+            AddonKind::Hint(_) => AddonFilter::Hint,
+            #[cfg(feature = "hint_note")]
+            AddonKind::Note(_) => AddonFilter::Note,
 
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(_) => AddonFilter::Diagnostics,
@@ -147,6 +157,11 @@ impl TryFrom<&str> for AddonFilter {
             "traces" => AddonFilter::Traces,
             "related" => AddonFilter::Related,
             "all" => AddonFilter::AllAllowed,
+
+            #[cfg(feature = "hint_note")]
+            "hints" => AddonFilter::Hint,
+            #[cfg(feature = "hint_note")]
+            "notes" => AddonFilter::Note,
 
             #[cfg(feature = "diagnostics")]
             "diagnostics" => AddonFilter::Diagnostics,
@@ -584,6 +599,11 @@ fn get_addons(s: &mut String) -> Vec<AddonFilter> {
                         addons.push(AddonFilter::Debugs);
                         addons.push(AddonFilter::Traces);
                         addons.push(AddonFilter::Related);
+
+                        #[cfg(feature = "hint_note")]
+                        addons.push(AddonFilter::Hint);
+                        #[cfg(feature = "hint_note")]
+                        addons.push(AddonFilter::Note);
 
                         #[cfg(feature = "diagnostics")]
                         addons.push(AddonFilter::Diagnostics);

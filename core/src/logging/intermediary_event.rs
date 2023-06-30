@@ -71,6 +71,11 @@ impl IntermediaryLogEvent {
             AddonKind::Trace(msg) => self.entry.traces.push(msg),
             AddonKind::Related(finalized_event) => self.entry.related.push(finalized_event),
 
+            #[cfg(feature = "hint_note")]
+            AddonKind::Hint(msg) => self.entry.hints.push(msg),
+            #[cfg(feature = "hint_note")]
+            AddonKind::Note(msg) => self.entry.notes.push(msg),
+
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(diag) => self.entry.diagnostics.push(diag),
 
