@@ -158,14 +158,17 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
     }
 
     if content_builder.lines.len() > 1 {
-        let last_line = content_builder
-            .lines
-            .remove(content_builder.lines.len() - 1);
-        content_builder.lines.push(
-            last_line
-                .replacen(&colored_lcross, &colored_lbot, 1)
-                .replacen(&colored_vbar, &colored_mbot, 1),
-        );
+        if let Some(last_line) = content_builder.lines.pop() {
+            if last_line.starts_with(&colored_lcross) {
+                content_builder
+                    .lines
+                    .push(last_line.replacen(&colored_lcross, &colored_lbot, 1));
+            } else {
+                content_builder
+                    .lines
+                    .push(last_line.replacen(&colored_vbar, &colored_mbot, 1));
+            }
+        }
     }
 
     let content_len = content_builder.content_len + content_builder.lines.len(); // + line-len for newline char
