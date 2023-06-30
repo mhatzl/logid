@@ -2,7 +2,7 @@ use criterion::{black_box, Criterion};
 use criterion::{criterion_group, criterion_main};
 use logid::logging::LOGGER;
 use logid::{
-    err, event_handler::LogEventHandlerBuilder, log, log_id::LogLevel,
+    err, event_handler::builder::LogEventHandlerBuilder, log, log_id::LogLevel,
     logging::event_entry::AddonKind, DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
 };
 use tracing::metadata::LevelFilter;
