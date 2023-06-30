@@ -48,12 +48,7 @@ fn capture_single_logid() {
     );
     assert_eq!(
         *entry.get_origin(),
-        Origin::new(
-            env!("CARGO_PKG_NAME"),
-            module_path!(),
-            file!(),
-            line!() - 29
-        ), //Note: Event is set 29 lines above
+        Origin::new(module_path!(), file!(), line!() - 25), //Note: Event is set 25 lines above
         "Set and stored origins are not equal"
     );
 }

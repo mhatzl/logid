@@ -2,7 +2,7 @@ use crate::{
     log_id::LogLevel,
     logging::{
         event_entry::AddonKind, filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent,
-        tests::filter::test_event,
+        tests::filter::test_entry,
     },
     new_log_id,
 };
@@ -21,7 +21,7 @@ fn allow_single_id_with_infos_addon() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -45,7 +45,7 @@ fn allow_single_id_with_infos_and_origin_addon() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -74,7 +74,7 @@ fn allow_single_id_with_related_addon() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -96,7 +96,7 @@ fn allow_single_id_with_all_addons() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
@@ -163,7 +163,7 @@ fn allow_module_with_infos_addon() {
     let filter = InnerLogFilter::new("logid_core::logging(infos) = error");
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
@@ -183,7 +183,7 @@ fn allow_crate_with_infos_addon() {
     let filter = InnerLogFilter::new("logid_core(infos) = error");
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
@@ -203,7 +203,7 @@ fn allow_general_level_with_infos_addon() {
     let filter = InnerLogFilter::new("error(infos)");
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Error level not allowed by filter."
     );
 

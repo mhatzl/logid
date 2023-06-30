@@ -79,10 +79,6 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
         &self.msg
     }
 
-    fn get_crate_name(&self) -> &'static str {
-        self.origin.crate_name
-    }
-
     fn get_origin(&self) -> &crate::evident::event::origin::Origin {
         &self.origin
     }

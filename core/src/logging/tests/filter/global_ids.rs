@@ -1,6 +1,6 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, tests::filter::test_event},
+    logging::{filter::InnerLogFilter, tests::filter::test_entry},
     new_log_id,
 };
 use evident::{event::filter::Filter, this_origin};
@@ -15,7 +15,7 @@ fn allow_single_id() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 }
@@ -34,12 +34,12 @@ fn allow_multiple_ids() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id_1, this_origin!())),
+        filter.allow_entry(&test_entry(log_id_1, this_origin!())),
         "Explicitly allowed first LogId not allowed by filter."
     );
 
     assert!(
-        filter.allow_event(&test_event(log_id_2, this_origin!())),
+        filter.allow_entry(&test_entry(log_id_2, this_origin!())),
         "Explicitly allowed second LogId not allowed by filter."
     );
 }
@@ -55,7 +55,7 @@ fn invalid_ids_syntax() {
     ));
 
     assert!(
-        !filter.allow_event(&test_event(log_id, this_origin!())),
+        !filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Invalid filter syntax allowed LogId by filter."
     );
 }

@@ -48,11 +48,6 @@ impl IntermediaryLogEvent {
         self.entry.event_id
     }
 
-    /// Returns the name of the associated crate of this log-id event
-    pub fn get_crate_name(&self) -> &'static str {
-        self.entry.origin.crate_name
-    }
-
     /// Returns the [`Entry`] of this log-id event
     pub fn get_entry(&self) -> &LogEventEntry {
         &self.entry

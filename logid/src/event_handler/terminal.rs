@@ -63,14 +63,14 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
     // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
 
     for related in entry.get_related() {
-        let related_id = related.event_id;
+        let related_id = related.get_event_id();
         let related_line = format!(
             "{}{} {}: lvl='{}', {}",
             colored_lcross,
             colored_arrow,
             "Related".bold(),
             get_colored_level(related_id.get_log_level()),
-            get_event_string(&related_id, &related.entry_id.to_string()),
+            get_event_string(related_id, &related.get_entry_id().to_string()),
         );
         content_builder.add_line(related_line);
     }
@@ -238,10 +238,10 @@ fn get_colored_lbot(level: LogLevel) -> String {
     "╰".color(get_level_color(level)).to_string()
 }
 
-fn get_event_string(id: &LogId, entry_id: &str) -> String {
+fn get_event_string(id: &LogId, entry_nr: &str) -> String {
     let module = id.get_module_path();
     let identifier = id.get_identifier();
-    format!("id='{module}::{identifier}', entry='{entry_id}'")
+    format!("id='{module}::{identifier}', entry='{entry_nr}'")
 }
 
 struct ContentBuilder {
