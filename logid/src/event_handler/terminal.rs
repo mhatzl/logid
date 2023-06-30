@@ -52,7 +52,7 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
                 colored_lcross,
                 colored_arrow,
                 "Origin".bold(),
-                origin.to_string()
+                origin
             );
             content_builder.add_line(origin_line);
         }
@@ -260,7 +260,7 @@ impl ContentBuilder {
 
     fn write<W: Write>(self, mut writer: BufWriter<W>) {
         for line in self.lines {
-            let _ = write!(writer, "{}\n", line);
+            let _ = writeln!(writer, "{}", line);
         }
         let _ = writer.flush();
     }
