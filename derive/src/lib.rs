@@ -66,7 +66,6 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
                         };
 
                         logid::log_id::LogId::new(
-                            env!("CARGO_PKG_NAME"),
                             module_path!(),
                             field_name,
                             #log_token,
@@ -99,7 +98,6 @@ fn from_struct_or_union(
         impl From<#ident_name> for logid::log_id::LogId {
             fn from(value: #ident_name) -> Self {
                 logid::log_id::LogId::new(
-                    env!("CARGO_PKG_NAME"),
                     module_path!(),
                     #ident_name_str,
                     #log_token,
@@ -137,8 +135,7 @@ pub fn derive_from_log_id(input: TokenStream) -> TokenStream {
             let from_log_id = quote_spanned! {span=>
                 impl From<logid::log_id::LogId> for #enum_name {
                     fn from(value: logid::log_id::LogId) -> Self {
-                        if value.get_crate_name() != env!("CARGO_PKG_NAME")
-                            || value.get_module_path() != module_path!() {
+                        if value.get_module_path() != module_path!() {
 
                             return Self::default();
                         }

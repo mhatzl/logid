@@ -9,8 +9,7 @@ use evident::{event::filter::Filter, this_origin};
 fn allow_single_id() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}]",
-        log_id.get_crate_name(),
+        "on[{}::{}]",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));
@@ -27,11 +26,9 @@ fn allow_multiple_ids() {
     let log_id_2 = new_log_id!("log_id_2", LogLevel::Debug);
 
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{} | {}::{}::{}]",
-        log_id_1.get_crate_name(),
+        "on[{}::{} | {}::{}]",
         log_id_1.get_module_path(),
         log_id_1.get_identifier(),
-        log_id_2.get_crate_name(),
         log_id_2.get_module_path(),
         log_id_2.get_identifier()
     ));
@@ -52,8 +49,7 @@ fn invalid_ids_syntax() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
 
     let filter = InnerLogFilter::new(&format!(
-        "on]{}::{}::{}[",
-        log_id.get_crate_name(),
+        "on]{}::{}[",
         log_id.get_module_path(),
         log_id.get_identifier(),
     ));

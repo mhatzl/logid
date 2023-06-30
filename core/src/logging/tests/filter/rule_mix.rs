@@ -12,8 +12,7 @@ fn global_id_and_general_error() {
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
 
     let filter = InnerLogFilter::new(&format!(
-        "on[{}::{}::{}], error",
-        log_id.get_crate_name(),
+        "on[{}::{}], error",
         log_id.get_module_path(),
         log_id.get_identifier()
     ));

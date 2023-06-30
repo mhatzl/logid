@@ -98,12 +98,7 @@ fn set_event_for_err_result() {
 fn capture_logid_with_custom_identifier() {
     let msg = "Set log message";
     let identifier = "log_id";
-    let log_id = LogId::new(
-        env!("CARGO_PKG_NAME"),
-        module_path!(),
-        identifier,
-        LogLevel::Trace,
-    );
+    let log_id = LogId::new(module_path!(), identifier, LogLevel::Trace);
 
     let recv = LOGGER.subscribe(log_id).unwrap();
 

@@ -7,7 +7,7 @@ use evident::{event::filter::Filter, this_origin};
 
 #[test]
 fn single_module() {
-    let filter = InnerLogFilter::new("logid-core::logid_core::logging = warn");
+    let filter = InnerLogFilter::new("logid_core::logging = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
     assert!(
@@ -23,8 +23,8 @@ fn single_module() {
 }
 
 #[test]
-fn only_crate_name() {
-    let filter = InnerLogFilter::new("logid-core = warn");
+fn only_crate_name_as_module() {
+    let filter = InnerLogFilter::new("logid_core = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
     assert!(
@@ -42,7 +42,7 @@ fn only_crate_name() {
 #[test]
 fn multiple_modules() {
     let filter = InnerLogFilter::new(
-        "logid-core::logid_core::logging::tests = warn, logid-core::logid_core::logging::event_entry = info",
+        "logid_core::logging::tests = warn, logid_core::logging::event_entry = info",
     );
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
@@ -61,7 +61,7 @@ fn multiple_modules() {
 #[test]
 fn module_with_id() {
     let filter = InnerLogFilter::new(
-        "logid-core::logid_core::logging[logid-core::logid_core::logging::tests::filter::only_module::info_id] = error",
+        "logid_core::logging[logid_core::logging::tests::filter::only_module::info_id] = error",
     );
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
@@ -80,7 +80,7 @@ fn module_with_id() {
 #[test]
 fn module_with_id_allowed_only() {
     let filter = InnerLogFilter::new(
-        "logid-core::logid_core::logging[logid-core::logid_core::logging::tests::filter::only_module::info_id]",
+        "logid_core::logging[logid_core::logging::tests::filter::only_module::info_id]",
     );
 
     let error_id = new_log_id!("error_id", LogLevel::Error);
