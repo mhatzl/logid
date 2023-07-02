@@ -3,6 +3,8 @@ use evident::event::finalized::FinalizedEvent;
 use crate::evident::event::origin::Origin;
 use crate::log_id::{LogId, LogLevel};
 
+use super::msg::LogMsg;
+
 #[derive(Default, Debug, Clone)]
 pub struct LogEventEntry {
     /// The event id of this entry
@@ -10,7 +12,7 @@ pub struct LogEventEntry {
     /// The unique id of this entry
     pub(crate) entry_id: crate::evident::uuid::Uuid,
     /// The main message set when creating the log-id entry
-    pub(crate) msg: String,
+    pub(crate) msg: Option<LogMsg>,
     /// List of additional informations for this log-id entry
     pub(crate) infos: Vec<String>,
     /// List of additional debug informations for this log-id entry
@@ -38,12 +40,12 @@ pub struct LogEventEntry {
     pub(crate) payloads: Vec<serde_json::value::Value>,
 }
 
-impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
-    fn new(event_id: LogId, msg: &str, origin: Origin) -> Self {
+impl crate::evident::event::entry::EventEntry<LogId, LogMsg> for LogEventEntry {
+    fn new(event_id: LogId, msg: Option<impl Into<LogMsg>>, origin: Origin) -> Self {
         LogEventEntry {
             event_id,
             entry_id: crate::evident::uuid::Uuid::new_v4(),
-            msg: msg.to_string(),
+            msg: msg.map(|m| m.into()),
             infos: Vec::new(),
             debugs: Vec::new(),
             traces: Vec::new(),
@@ -75,8 +77,8 @@ impl crate::evident::event::entry::EventEntry<LogId> for LogEventEntry {
         self.entry_id
     }
 
-    fn get_msg(&self) -> &str {
-        &self.msg
+    fn get_msg(&self) -> Option<&LogMsg> {
+        self.msg.as_ref()
     }
 
     fn get_origin(&self) -> &crate::evident::event::origin::Origin {
@@ -88,10 +90,6 @@ impl LogEventEntry {
     /// Get the level of the log-id of this entry
     pub fn get_level(&self) -> LogLevel {
         self.event_id.log_level
-    }
-    /// Get the main message set when creating the log-id entry
-    pub fn get_msg(&self) -> &String {
-        &self.msg
     }
 
     /// Get the code position where the log-id entry was created

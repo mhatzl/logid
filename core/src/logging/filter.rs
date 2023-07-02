@@ -4,7 +4,7 @@ use evident::event::origin::Origin;
 
 use crate::log_id::{LogId, LogLevel};
 
-use super::event_entry::AddonKind;
+use super::{event_entry::AddonKind, msg::LogMsg};
 
 #[derive(Default, Debug)]
 pub struct LogFilter {
@@ -87,8 +87,8 @@ fn filter_config() -> String {
     }
 }
 
-impl evident::event::filter::Filter<LogId> for LogFilter {
-    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId>) -> bool {
+impl evident::event::filter::Filter<LogId, LogMsg> for LogFilter {
+    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
         if !allow_level(entry.get_event_id().log_level) {
             return false;
         }
@@ -429,8 +429,8 @@ impl InnerLogFilter {
     }
 }
 
-impl evident::event::filter::Filter<LogId> for InnerLogFilter {
-    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId>) -> bool {
+impl evident::event::filter::Filter<LogId, LogMsg> for InnerLogFilter {
+    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
         // Note: event handler creates unique LogIds per handler => filter on origin
         if entry
             .get_origin()

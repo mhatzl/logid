@@ -10,7 +10,7 @@ use std::{
 use logid_core::{
     evident::event::Event,
     log_id::{LogId, START_LOGGING, STOP_LOGGING},
-    logging::{event_entry::LogEventEntry, LOGGER},
+    logging::{event_entry::LogEventEntry, msg::LogMsg, LOGGER},
 };
 
 use super::{
@@ -27,7 +27,8 @@ pub struct AllLogs;
 #[derive(Default)]
 pub struct SpecificLogs;
 
-type Handler = Box<dyn FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static>;
+type Handler =
+    Box<dyn FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>) + std::marker::Send + 'static>;
 
 #[derive(Default)]
 pub struct LogEventHandlerBuilder<K> {
@@ -54,7 +55,7 @@ impl LogEventHandlerBuilder<NoKind> {
 
     pub fn add_handler(
         mut self,
-        handler: impl FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static,
+        handler: impl FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>) + std::marker::Send + 'static,
     ) -> Self {
         self.handler.push(Box::new(handler));
         self
@@ -166,9 +167,9 @@ impl std::fmt::Display for LogEventHandlerError {
     }
 }
 
-fn event_listener<F: FnMut(Arc<Event<LogId, LogEventEntry>>)>(
+fn event_listener<F: FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>)>(
     mut fns: Vec<F>,
-    recv: &Receiver<Arc<Event<LogId, LogEventEntry>>>,
+    recv: &Receiver<Arc<Event<LogId, LogMsg, LogEventEntry>>>,
     start: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     shutdown: Arc<AtomicBool>,

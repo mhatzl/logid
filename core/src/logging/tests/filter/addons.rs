@@ -2,7 +2,7 @@ use crate::{
     log_id::LogLevel,
     logging::{
         event_entry::AddonKind, filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent,
-        tests::filter::test_entry,
+        msg::NO_MSG, tests::filter::test_entry,
     },
     new_log_id,
 };
@@ -78,7 +78,7 @@ fn allow_single_id_with_related_addon() {
         "Explicitly allowed LogId not allowed by filter."
     );
 
-    let log_event = IntermediaryLogEvent::new(log_id, "", this_origin!());
+    let log_event = IntermediaryLogEvent::new(log_id, NO_MSG, this_origin!());
     let finalized = log_event.finalize();
     assert!(
         filter.allow_addon(log_id, &this_origin!(), &AddonKind::Related(finalized)),

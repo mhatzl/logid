@@ -1,5 +1,6 @@
 crate::evident::create_set_event_macro!(
     id_type = logid::log_id::LogId,
+    msg_type = logid::logging::msg::LogMsg,
     entry_type = logid::logging::event_entry::LogEventEntry,
     interm_event_type = logid::logging::intermediary_event::IntermediaryLogEvent
 );
@@ -7,10 +8,16 @@ crate::evident::create_set_event_macro!(
 #[macro_export]
 macro_rules! log {
     ($any:expr) => {
-        $crate::set_event!(($any).clone().into(), &$any.to_string()).finalize()
+        {
+            let s = $any.to_string();
+            $crate::set_event!(($any).into(), s).finalize()
+        }
     };
     ($any:expr, $(add:$addon:expr),*) => {
-        $crate::set_event!(($any).into(), &$any.to_string())$(.add_addon($addon))*.finalize()
+        {
+            let s = $any.to_string();
+            $crate::set_event!(($any).into(), s)$(.add_addon($addon))*.finalize()
+        }
     };
     ($any:expr, $msg:expr) => {
         $crate::set_event!(($any).into(), $msg).finalize()

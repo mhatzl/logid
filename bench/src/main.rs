@@ -60,6 +60,9 @@ fn main() {
 
     log!(BenchWarn::Test, "Event logged again globally.");
 
+    // Use Display impl for "BenchWarn::Test"
+    log!(BenchWarn::Test);
+
     println!(
         "Duration: {}us\n-----------------------------\n",
         end_time
@@ -105,6 +108,12 @@ enum BenchError {
 #[derive(Debug, Clone, WarnLogId)]
 enum BenchWarn {
     Test,
+}
+
+impl std::fmt::Display for BenchWarn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BenchWarn Display impl.")
+    }
 }
 
 #[derive(Debug, Clone, InfoLogId)]

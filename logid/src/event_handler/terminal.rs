@@ -8,20 +8,21 @@ use colored::*;
 use logid_core::{
     evident::event::Event,
     log_id::{LogId, LogLevel},
-    logging::{event_entry::LogEventEntry, LOGGER},
+    logging::{event_entry::LogEventEntry, msg::LogMsg, LOGGER},
 };
 
-pub(super) fn stderr_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
+pub(super) fn stderr_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>) {
     terminal_writer(log_event, true);
 }
 
-pub(super) fn stdout_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
+pub(super) fn stdout_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>) {
     terminal_writer(log_event, false);
 }
 
-fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool) {
+fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stderr: bool) {
     let id = log_event.get_event_id();
     let level = id.get_log_level();
+    let entry = log_event.get_entry();
 
     let colored_vbar = get_colored_vbar(level);
     let colored_lcross = get_colored_lcross(level);
@@ -30,7 +31,14 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
     let colored_mbot = get_colored_mbot(level);
 
     let mut content_builder = ContentBuilder::new();
-    content_builder.add_header(level, log_event.get_msg(), &colored_vbar);
+    match log_event.get_msg() {
+        Some(msg) => content_builder.add_header(level, &msg.to_string(), &colored_vbar),
+        None => content_builder.add_header(
+            level,
+            &get_event_string(id, &log_event.get_entry_id().to_string()),
+            &colored_vbar,
+        ),
+    };
 
     if let Some(filter) = LOGGER.get_filter() {
         let origin = log_event.get_origin();
@@ -57,8 +65,6 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
             content_builder.add_line(origin_line);
         }
     }
-
-    let entry = log_event.get_entry();
 
     // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
 
@@ -241,10 +247,10 @@ fn get_colored_lbot(level: LogLevel) -> String {
     "╰".color(get_level_color(level)).to_string()
 }
 
-fn get_event_string(id: &LogId, entry_nr: &str) -> String {
+fn get_event_string(id: &LogId, entry_id: &str) -> String {
     let module = id.get_module_path();
     let identifier = id.get_identifier();
-    format!("id='{module}::{identifier}', entry='{entry_nr}'")
+    format!("id='{module}::{identifier}', entry='{entry_id}'")
 }
 
 struct ContentBuilder {

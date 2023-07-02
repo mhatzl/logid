@@ -35,9 +35,8 @@ impl LogEventHandler {
     pub fn start(&self) {
         self.start.store(true, Ordering::Release);
 
-        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+        crate::evident::event::set_event::<_, _, LogEventEntry, IntermediaryLogEvent>(
             HANDLER_START_LOGGING,
-            "Start logging on handler.",
             crate::evident::this_origin!(),
         )
         .finalize();
@@ -46,9 +45,8 @@ impl LogEventHandler {
     pub fn stop(&self) {
         self.stop.store(true, Ordering::Release);
 
-        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+        crate::evident::event::set_event::<_, _, LogEventEntry, IntermediaryLogEvent>(
             HANDLER_STOP_LOGGING,
-            "Stop logging on handler.",
             crate::evident::this_origin!(),
         )
         .finalize();
@@ -67,9 +65,8 @@ impl Drop for LogEventHandler {
     fn drop(&mut self) {
         self.shutdown.store(true, Ordering::Release);
 
-        crate::evident::event::set_event_with_msg::<_, LogEventEntry, IntermediaryLogEvent>(
+        crate::evident::event::set_event::<_, _, LogEventEntry, IntermediaryLogEvent>(
             SHUTDOWN_HANDLER,
-            "Shutdown logging on handler.",
             crate::evident::this_origin!(),
         )
         .finalize();

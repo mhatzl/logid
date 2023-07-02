@@ -4,6 +4,7 @@ use crate::log_id::LogId;
 
 use super::{
     event_entry::{AddonKind, LogEventEntry},
+    msg::LogMsg,
     LOGGER,
 };
 
@@ -14,10 +15,10 @@ pub struct IntermediaryLogEvent {
     pub(crate) entry: LogEventEntry,
 }
 
-impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>
+impl evident::event::intermediary::IntermediaryEvent<LogId, LogMsg, LogEventEntry>
     for IntermediaryLogEvent
 {
-    fn new(event_id: LogId, msg: &str, origin: Origin) -> Self {
+    fn new(event_id: LogId, msg: Option<impl Into<LogMsg>>, origin: Origin) -> Self {
         IntermediaryLogEvent {
             entry: LogEventEntry::new(event_id, msg, origin),
         }
