@@ -40,7 +40,7 @@ fn main() {
 
     handler.start();
 
-    log!(BenchWarn::Test, "Event logged again.");
+    log!(BenchInfo::Test, "Event logged again.");
 
     handler2.stop();
 
@@ -49,16 +49,16 @@ fn main() {
         "Event logged => handler2.stop() does not affect handler."
     );
 
-    LOGGER.stop_capturing();
+    LOGGER.stop();
 
     log!(
-        BenchWarn::Test,
+        BenchError::Test,
         "Global logging stopped => Event not logged."
     );
 
-    LOGGER.start_capturing();
+    LOGGER.start();
 
-    log!(BenchWarn::Test, "Event logged again globally.");
+    log!(BenchInfo::Test, "Event logged again globally.");
 
     // Use Display impl for "BenchWarn::Test"
     log!(BenchWarn::Test);
