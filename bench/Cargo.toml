@@ -6,11 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-logid = { path = "../logid", features = ["log_debugs", "log_traces", "hint_note"] }
+logid = { path = "../logid", features = ["log_debugs", "log_traces", "hint_note", "payloads", "fmt"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 criterion = { version = "0.5", features = ["html_reports"] }
 thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 [[bench]]
 name = "bench"

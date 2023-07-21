@@ -1,19 +1,16 @@
-#[cfg(feature = "fmt")]
-use std::sync::Arc;
-
 #[derive(Debug, Clone)]
 pub struct LogMsg {
     msg: String,
 
     #[cfg(feature = "fmt")]
-    fmt: Option<Arc<FmtMsg>>,
+    fmt: Option<FmtMsg>,
 }
 
 pub const NO_MSG: Option<LogMsg> = None;
 
 #[cfg(feature = "fmt")]
 impl LogMsg {
-    pub fn get_fmt_data(&self) -> Option<&serde_json::Value> {
+    pub fn get_fmt_data(&self) -> Option<&crate::serde_json::Value> {
         self.fmt.as_ref().map(|f| f.get_data())
     }
 }
@@ -54,23 +51,23 @@ impl From<&str> for LogMsg {
 #[cfg(feature = "fmt")]
 impl
     From<(
-        for<'a> fn(&'a serde_json::Value) -> String,
-        serde_json::Value,
+        for<'a> fn(&'a crate::serde_json::Value) -> String,
+        crate::serde_json::Value,
     )> for LogMsg
 {
     fn from(
         value: (
-            for<'a> fn(&'a serde_json::Value) -> String,
-            serde_json::Value,
+            for<'a> fn(&'a crate::serde_json::Value) -> String,
+            crate::serde_json::Value,
         ),
     ) -> Self {
         LogMsg {
             msg: String::default(),
             #[cfg(feature = "fmt")]
-            fmt: Some(Arc::new(FmtMsg {
+            fmt: Some(FmtMsg {
                 func: value.0,
                 data: value.1,
-            })),
+            }),
         }
     }
 }
@@ -81,7 +78,7 @@ impl From<FmtMsg> for LogMsg {
         LogMsg {
             msg: String::default(),
             #[cfg(feature = "fmt")]
-            fmt: Some(Arc::new(value)),
+            fmt: Some(value),
         }
     }
 }
@@ -120,18 +117,22 @@ impl PartialEq<str> for LogMsg {
 }
 
 #[cfg(feature = "fmt")]
+#[derive(Clone)]
 pub struct FmtMsg {
-    func: for<'a> fn(&'a serde_json::Value) -> String,
-    data: serde_json::Value,
+    func: for<'a> fn(&'a crate::serde_json::Value) -> String,
+    data: crate::serde_json::Value,
 }
 
 #[cfg(feature = "fmt")]
 impl FmtMsg {
-    pub fn new(func: for<'a> fn(&'a serde_json::Value) -> String, data: serde_json::Value) -> Self {
+    pub fn new(
+        func: for<'a> fn(&'a crate::serde_json::Value) -> String,
+        data: crate::serde_json::Value,
+    ) -> Self {
         FmtMsg { func, data }
     }
 
-    pub fn get_data(&self) -> &serde_json::Value {
+    pub fn get_data(&self) -> &crate::serde_json::Value {
         &self.data
     }
 }
@@ -149,3 +150,13 @@ impl std::fmt::Display for FmtMsg {
         write!(f, "{}", (self.func)(&self.data))
     }
 }
+
+#[cfg(feature = "fmt")]
+impl PartialEq<FmtMsg> for FmtMsg {
+    fn eq(&self, other: &FmtMsg) -> bool {
+        (self.func)(&self.data) == (other.func)(&other.data)
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl Eq for FmtMsg {}

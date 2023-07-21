@@ -131,16 +131,31 @@ impl From<&AddonKind> for AddonFilter {
             AddonKind::Trace(_) => AddonFilter::Traces,
             AddonKind::Related(_) => AddonFilter::Related,
 
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtInfo(_) => AddonFilter::Infos,
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtDebug(_) => AddonFilter::Debugs,
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtTrace(_) => AddonFilter::Traces,
+
             #[cfg(feature = "hint_note")]
             AddonKind::Hint(_) => AddonFilter::Hint,
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtHint(_) => AddonFilter::Hint,
             #[cfg(feature = "hint_note")]
             AddonKind::Note(_) => AddonFilter::Note,
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtNote(_) => AddonFilter::Note,
 
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(_) => AddonFilter::Diagnostics,
+            #[cfg(all(feature = "diagnostics", feature = "fmt"))]
+            AddonKind::FmtDiagnostic(_) => AddonFilter::Diagnostics,
 
             #[cfg(feature = "payloads")]
             AddonKind::Payload(_) => AddonFilter::Payloads,
+            #[cfg(all(feature = "payloads", feature = "fmt"))]
+            AddonKind::FmtPayload(_) => AddonFilter::Payloads,
         }
     }
 }

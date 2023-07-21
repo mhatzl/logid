@@ -92,6 +92,18 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stder
         );
     }
 
+    #[cfg(feature = "fmt")]
+    for info in entry.get_fmt_infos() {
+        content_builder.add_multiline_addon(
+            "Info",
+            info.to_string().lines(),
+            Some(get_level_color(LogLevel::Info)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
     for debug in entry.get_debugs() {
         content_builder.add_multiline_addon(
             "Debug",
@@ -103,10 +115,34 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stder
         );
     }
 
+    #[cfg(feature = "fmt")]
+    for debug in entry.get_fmt_debugs() {
+        content_builder.add_multiline_addon(
+            "Debug",
+            debug.to_string().lines(),
+            Some(get_level_color(LogLevel::Debug)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
     for trace in entry.get_traces() {
         content_builder.add_multiline_addon(
             "Trace",
             trace.lines(),
+            Some(get_level_color(LogLevel::Trace)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    #[cfg(feature = "fmt")]
+    for trace in entry.get_fmt_traces() {
+        content_builder.add_multiline_addon(
+            "Trace",
+            trace.to_string().lines(),
             Some(get_level_color(LogLevel::Trace)),
             &colored_lcross,
             &colored_arrow,
@@ -126,6 +162,18 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stder
         );
     }
 
+    #[cfg(all(feature = "hint_note", feature = "fmt"))]
+    for hint in entry.get_fmt_hints() {
+        content_builder.add_multiline_addon(
+            "Hint",
+            hint.to_string().lines(),
+            Some(Color::Cyan),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
     #[cfg(feature = "hint_note")]
     for note in entry.get_notes() {
         content_builder.add_multiline_addon(
@@ -138,12 +186,24 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stder
         );
     }
 
-    #[cfg(feature = "diagnostics")]
-    for diag in entry.get_diagnostics() {
-        // TODO: make diag output prettier
+    #[cfg(all(feature = "hint_note", feature = "fmt"))]
+    for note in entry.get_fmt_notes() {
+        content_builder.add_multiline_addon(
+            "Note",
+            note.to_string().lines(),
+            Some(Color::Cyan),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    // Note: Only formatted diag output, because non-formatted is too much clutter
+    #[cfg(all(feature = "diagnostics", feature = "fmt"))]
+    for diag in entry.get_fmt_diagnostics() {
         content_builder.add_multiline_addon(
             "Diagnostics",
-            diag.message.lines(),
+            diag.to_string().lines(),
             None,
             &colored_lcross,
             &colored_arrow,
@@ -153,6 +213,18 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stder
 
     #[cfg(feature = "payloads")]
     for payload in entry.get_payloads() {
+        content_builder.add_multiline_addon(
+            "Payload",
+            payload.to_string().lines(),
+            None,
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    #[cfg(all(feature = "payloads", feature = "fmt"))]
+    for payload in entry.get_fmt_payloads() {
         content_builder.add_multiline_addon(
             "Payload",
             payload.to_string().lines(),
