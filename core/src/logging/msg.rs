@@ -1,21 +1,43 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "fmt")]
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
 pub struct LogMsg {
     msg: String,
+
+    #[cfg(feature = "fmt")]
+    fmt: Option<Arc<FmtMsg>>,
 }
 
 pub const NO_MSG: Option<LogMsg> = None;
+
+#[cfg(feature = "fmt")]
+impl LogMsg {
+    pub fn get_fmt_data(&self) -> Option<&serde_json::Value> {
+        self.fmt.as_ref().map(|f| f.get_data())
+    }
+}
 
 impl evident::event::Msg for LogMsg {}
 
 impl std::fmt::Display for LogMsg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[cfg(feature = "fmt")]
+        if let Some(fmt) = &self.fmt {
+            return write!(f, "{}", fmt);
+        }
+
         write!(f, "{}", self.msg)
     }
 }
 
 impl From<String> for LogMsg {
     fn from(value: String) -> Self {
-        LogMsg { msg: value }
+        LogMsg {
+            msg: value,
+            #[cfg(feature = "fmt")]
+            fmt: None,
+        }
     }
 }
 
@@ -23,24 +45,107 @@ impl From<&str> for LogMsg {
     fn from(value: &str) -> Self {
         LogMsg {
             msg: value.to_string(),
+            #[cfg(feature = "fmt")]
+            fmt: None,
+        }
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl
+    From<(
+        for<'a> fn(&'a serde_json::Value) -> String,
+        serde_json::Value,
+    )> for LogMsg
+{
+    fn from(
+        value: (
+            for<'a> fn(&'a serde_json::Value) -> String,
+            serde_json::Value,
+        ),
+    ) -> Self {
+        LogMsg {
+            msg: String::default(),
+            #[cfg(feature = "fmt")]
+            fmt: Some(Arc::new(FmtMsg {
+                func: value.0,
+                data: value.1,
+            })),
+        }
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl From<FmtMsg> for LogMsg {
+    fn from(value: FmtMsg) -> Self {
+        LogMsg {
+            msg: String::default(),
+            #[cfg(feature = "fmt")]
+            fmt: Some(Arc::new(value)),
         }
     }
 }
 
 impl From<LogMsg> for String {
     fn from(value: LogMsg) -> Self {
+        #[cfg(feature = "fmt")]
+        if let Some(fmt) = value.fmt {
+            return fmt.to_string();
+        }
+
         value.msg
     }
 }
 
 impl PartialEq<String> for LogMsg {
     fn eq(&self, other: &String) -> bool {
+        #[cfg(feature = "fmt")]
+        if let Some(fmt) = &self.fmt {
+            return fmt.to_string().eq(other);
+        }
+
         self.msg.eq(other)
     }
 }
 
 impl PartialEq<str> for LogMsg {
     fn eq(&self, other: &str) -> bool {
+        #[cfg(feature = "fmt")]
+        if let Some(fmt) = &self.fmt {
+            return fmt.to_string().eq(other);
+        }
+
         self.msg.eq(other)
+    }
+}
+
+#[cfg(feature = "fmt")]
+pub struct FmtMsg {
+    func: for<'a> fn(&'a serde_json::Value) -> String,
+    data: serde_json::Value,
+}
+
+#[cfg(feature = "fmt")]
+impl FmtMsg {
+    pub fn new(func: for<'a> fn(&'a serde_json::Value) -> String, data: serde_json::Value) -> Self {
+        FmtMsg { func, data }
+    }
+
+    pub fn get_data(&self) -> &serde_json::Value {
+        &self.data
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl std::fmt::Debug for FmtMsg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", (self.func)(&self.data))
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl std::fmt::Display for FmtMsg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", (self.func)(&self.data))
     }
 }

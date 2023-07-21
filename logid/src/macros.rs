@@ -25,6 +25,14 @@ macro_rules! log {
     ($any:expr, $msg:expr, $(add:$addon:expr),*) => {
         $crate::set_event!(($any).into(), $msg)$(.add_addon($addon))*.finalize()
     };
+
+    // Note: It is not possible to check for "fmt" feature flag here
+    ($any:expr, $fmt_fn:expr, $fmt_data:expr) => {
+        $crate::set_event!(($any).into(), $crate::logging::msg::FmtMsg::new($fmt_fn, $fmt_data)).finalize()
+    };
+    ($any:expr, $fmt_fn:expr, $fmt_data:expr, $(add:$addon:expr),*) => {
+        $crate::set_event!(($any).into(), $crate::logging::msg::FmtMsg::new($fmt_fn, $fmt_data))$(.add_addon($addon))*.finalize()
+    };
 }
 
 #[macro_export]
@@ -53,6 +61,19 @@ macro_rules! err {
             Err($error)
         }
     };
+
+    ($error:expr, $fmt_fn:expr, $fmt_data:expr) => {
+        {
+            $crate::log!($error, $fmt_fn, $fmt_data);
+            Err($error)
+        }
+    };
+    ($error:expr, $fmt_fn:expr, $fmt_data:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($error, $fmt_fn, $fmt_data, $(add:$addon),*);
+            Err($error)
+        }
+    };
 }
 
 #[macro_export]
@@ -78,6 +99,19 @@ macro_rules! pipe {
     ($any:expr, $msg:expr, $(add:$addon:expr),*) => {
         {
             $crate::log!($any, $msg, $(add:$addon),*);
+            $any
+        }
+    };
+
+    ($any:expr, $fmt_fn:expr, $fmt_data:expr) => {
+        {
+            $crate::log!($any, $fmt_fn, $fmt_data);
+            $any
+        }
+    };
+    ($any:expr, $fmt_fn:expr, $fmt_data:expr, $(add:$addon:expr),*) => {
+        {
+            $crate::log!($any, $fmt_fn, $fmt_data, $(add:$addon),*);
             $any
         }
     };
