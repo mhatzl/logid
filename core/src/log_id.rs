@@ -73,12 +73,12 @@ impl std::fmt::Display for LogId {
 /// Log level a [`LogId`] may represent.
 #[derive(Debug, Default, PartialOrd, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
 pub enum LogLevel {
-    Error = 0,
-    Warn = 1,
-    Info = 2,
+    Trace = 0,
     #[default]
-    Debug = 3,
-    Trace = 4,
+    Debug = 1,
+    Info = 2,
+    Warn = 3,
+    Error = 4,
 }
 
 impl std::fmt::Display for LogLevel {

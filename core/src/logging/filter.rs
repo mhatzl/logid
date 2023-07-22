@@ -16,14 +16,15 @@ pub struct LogFilter {
 ///
 /// Without using this function as early filter return, debug and trace logs would mostly go through all filter steps, which decreases performance.
 #[allow(unreachable_code)]
+#[allow(unused_variables)]
 fn allow_level(level: LogLevel) -> bool {
     #[cfg(feature = "log_traces")]
-    return level <= LogLevel::Trace;
+    return true; // Note: No level is below Trace
 
     #[cfg(feature = "log_debugs")]
-    return level <= LogLevel::Debug;
+    return level >= LogLevel::Debug;
 
-    level < LogLevel::Debug
+    level > LogLevel::Debug
 }
 
 impl LogFilter {
@@ -287,7 +288,7 @@ impl LogIdModuleFilter {
             return false;
         }
 
-        (!self.no_general_logging && self.level >= id.log_level)
+        (!self.no_general_logging && self.level <= id.log_level)
             || id_allowed(&self.allowed_ids, id)
     }
 
@@ -297,7 +298,7 @@ impl LogIdModuleFilter {
         }
 
         (!self.no_general_logging
-            && self.level >= id.log_level
+            && self.level <= id.log_level
             && self.allowed_addons.contains(addon))
             || addon_allowed(&self.allowed_ids, id, addon)
     }
@@ -455,8 +456,8 @@ impl evident::event::filter::Filter<LogId, LogMsg> for InnerLogFilter {
             return true;
         }
 
-        // Note: `Error` starts at `0`
-        if !self.no_general_logging && self.general_level >= entry.get_event_id().log_level {
+        // Note: `Trace` starts at `0`
+        if !self.no_general_logging && self.general_level <= entry.get_event_id().log_level {
             return true;
         }
 
