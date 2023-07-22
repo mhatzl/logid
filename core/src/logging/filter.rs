@@ -4,7 +4,7 @@ use evident::event::origin::Origin;
 
 use crate::log_id::{LogId, LogLevel};
 
-use super::event_entry::{AddonKind, LogEventEntry};
+use super::{event_entry::AddonKind, msg::LogMsg};
 
 #[derive(Default, Debug)]
 pub struct LogFilter {
@@ -87,14 +87,14 @@ fn filter_config() -> String {
     }
 }
 
-impl evident::event::filter::Filter<LogId, LogEventEntry> for LogFilter {
-    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
-        if !allow_level(event.get_event_id().log_level) {
+impl evident::event::filter::Filter<LogId, LogMsg> for LogFilter {
+    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
+        if !allow_level(entry.get_event_id().log_level) {
             return false;
         }
 
         match self.filter.read() {
-            Ok(locked_filter) => locked_filter.allow_event(event),
+            Ok(locked_filter) => locked_filter.allow_entry(entry),
             Err(_) => false,
         }
     }
@@ -131,16 +131,31 @@ impl From<&AddonKind> for AddonFilter {
             AddonKind::Trace(_) => AddonFilter::Traces,
             AddonKind::Related(_) => AddonFilter::Related,
 
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtInfo(_) => AddonFilter::Infos,
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtDebug(_) => AddonFilter::Debugs,
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtTrace(_) => AddonFilter::Traces,
+
             #[cfg(feature = "hint_note")]
             AddonKind::Hint(_) => AddonFilter::Hint,
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtHint(_) => AddonFilter::Hint,
             #[cfg(feature = "hint_note")]
             AddonKind::Note(_) => AddonFilter::Note,
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtNote(_) => AddonFilter::Note,
 
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(_) => AddonFilter::Diagnostics,
+            #[cfg(all(feature = "diagnostics", feature = "fmt"))]
+            AddonKind::FmtDiagnostic(_) => AddonFilter::Diagnostics,
 
             #[cfg(feature = "payloads")]
             AddonKind::Payload(_) => AddonFilter::Payloads,
+            #[cfg(all(feature = "payloads", feature = "fmt"))]
+            AddonKind::FmtPayload(_) => AddonFilter::Payloads,
         }
     }
 }
@@ -429,11 +444,10 @@ impl InnerLogFilter {
     }
 }
 
-impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
-    fn allow_event(&self, event: &evident::event::Event<LogId, LogEventEntry>) -> bool {
+impl evident::event::filter::Filter<LogId, LogMsg> for InnerLogFilter {
+    fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
         // Note: event handler creates unique LogIds per handler => filter on origin
-        if event
-            .get_entry()
+        if entry
             .get_origin()
             .module_path
             .starts_with("logid::event_handler")
@@ -442,15 +456,15 @@ impl evident::event::filter::Filter<LogId, LogEventEntry> for InnerLogFilter {
         }
 
         // Note: `Error` starts at `0`
-        if !self.no_general_logging && self.general_level >= event.get_event_id().log_level {
+        if !self.no_general_logging && self.general_level >= entry.get_event_id().log_level {
             return true;
         }
 
-        id_allowed(&self.allowed_global_ids, *event.get_event_id())
+        id_allowed(&self.allowed_global_ids, *entry.get_event_id())
             || id_allowed_in_origin(
                 &self.allowed_modules,
-                *event.get_event_id(),
-                &event.get_entry().origin,
+                *entry.get_event_id(),
+                entry.get_origin(),
             )
     }
 }

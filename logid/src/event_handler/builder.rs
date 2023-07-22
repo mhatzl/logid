@@ -10,7 +10,7 @@ use std::{
 use logid_core::{
     evident::event::Event,
     log_id::{LogId, START_LOGGING, STOP_LOGGING},
-    logging::{event_entry::LogEventEntry, LOGGER},
+    logging::{event_entry::LogEventEntry, msg::LogMsg, LOGGER},
 };
 
 use super::{
@@ -27,7 +27,8 @@ pub struct AllLogs;
 #[derive(Default)]
 pub struct SpecificLogs;
 
-type Handler = Box<dyn FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static>;
+type Handler =
+    Box<dyn FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>) + std::marker::Send + 'static>;
 
 #[derive(Default)]
 pub struct LogEventHandlerBuilder<K> {
@@ -54,7 +55,7 @@ impl LogEventHandlerBuilder<NoKind> {
 
     pub fn add_handler(
         mut self,
-        handler: impl FnMut(Arc<Event<LogId, LogEventEntry>>) + std::marker::Send + 'static,
+        handler: impl FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>) + std::marker::Send + 'static,
     ) -> Self {
         self.handler.push(Box::new(handler));
         self
@@ -166,9 +167,9 @@ impl std::fmt::Display for LogEventHandlerError {
     }
 }
 
-fn event_listener<F: FnMut(Arc<Event<LogId, LogEventEntry>>)>(
+fn event_listener<F: FnMut(Arc<Event<LogId, LogMsg, LogEventEntry>>)>(
     mut fns: Vec<F>,
-    recv: &Receiver<Arc<Event<LogId, LogEventEntry>>>,
+    recv: &Receiver<Arc<Event<LogId, LogMsg, LogEventEntry>>>,
     start: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     shutdown: Arc<AtomicBool>,
@@ -183,14 +184,13 @@ fn event_listener<F: FnMut(Arc<Event<LogId, LogEventEntry>>)>(
 
                 // Note: Due to channel buffer, handler flags might already be set, but not all events are processed => required check on flag AND event id
 
-                if id == &STOP_LOGGING {
+                if id == &STOP_LOGGING
+                    || id == &HANDLER_STOP_LOGGING && stop.load(Ordering::Acquire)
+                {
                     capturing.store(false, Ordering::Release);
-                    break;
-                } else if stop.load(Ordering::Acquire) && id == &HANDLER_STOP_LOGGING {
                     stop.store(false, Ordering::Release);
-                    capturing.store(false, Ordering::Release);
                     break;
-                } else if shutdown.load(Ordering::Acquire) && id == &SHUTDOWN_HANDLER {
+                } else if id == &SHUTDOWN_HANDLER && shutdown.load(Ordering::Acquire) {
                     shutdown_received = true;
                     break;
                 } else if id != &HANDLER_START_LOGGING
@@ -205,14 +205,14 @@ fn event_listener<F: FnMut(Arc<Event<LogId, LogEventEntry>>)>(
             while let Ok(log_event) = recv.recv() {
                 let id = log_event.get_event_id();
 
-                if id == &START_LOGGING {
+                // Note: Due to channel buffer, handler flags might already be set, but not all events are processed => required check on flag AND event id
+                if id == &START_LOGGING
+                    || id == &HANDLER_START_LOGGING && start.load(Ordering::Acquire)
+                {
                     capturing.store(true, Ordering::Release);
-                    break;
-                } else if start.load(Ordering::Acquire) && id == &HANDLER_START_LOGGING {
                     start.store(false, Ordering::Release);
-                    capturing.store(true, Ordering::Release);
                     break;
-                } else if shutdown.load(Ordering::Acquire) && id == &SHUTDOWN_HANDLER {
+                } else if id == &SHUTDOWN_HANDLER && shutdown.load(Ordering::Acquire) {
                     shutdown_received = true;
                     break;
                 }

@@ -9,7 +9,7 @@ pub struct LogId {
     pub(crate) log_level: LogLevel,
 }
 
-impl evident::publisher::Id for LogId {}
+impl evident::event::Id for LogId {}
 
 impl evident::publisher::CaptureControl for LogId {
     fn start(id: &Self) -> bool {
@@ -66,11 +66,7 @@ impl LogId {
 
 impl std::fmt::Display for LogId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {}::{}",
-            self.log_level, self.module_path, self.identifier
-        )
+        write!(f, "id='{}::{}'", self.module_path, self.identifier)
     }
 }
 

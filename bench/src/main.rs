@@ -3,8 +3,9 @@ use logid::{
     event_handler::builder::LogEventHandlerBuilder,
     log,
     logging::{event_entry::AddonKind, LOGGER},
-    DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
+    payload_addon, DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
 };
+use serde::{Deserialize, Serialize};
 
 fn main() {
     let _ = logid::set_filter!("trace(all)");
@@ -40,7 +41,18 @@ fn main() {
 
     handler.start();
 
-    log!(BenchWarn::Test, "Event logged again.");
+    let payload = DummyPayload {
+        vals: vec!["First", "Second", "Third", "Fourth"]
+            .iter_mut()
+            .map(|f| f.to_string())
+            .collect(),
+    };
+
+    log!(
+        BenchInfo::Test,
+        "Event logged again.",
+        add: payload_addon!(fmt_payload, logid::serde_json::to_value(payload).unwrap())
+    );
 
     handler2.stop();
 
@@ -49,16 +61,19 @@ fn main() {
         "Event logged => handler2.stop() does not affect handler."
     );
 
-    LOGGER.stop_capturing();
+    LOGGER.stop();
 
     log!(
-        BenchWarn::Test,
+        BenchError::Test,
         "Global logging stopped => Event not logged."
     );
 
-    LOGGER.start_capturing();
+    LOGGER.start();
 
-    log!(BenchWarn::Test, "Event logged again globally.");
+    log!(BenchInfo::Test, "Event logged again globally.");
+
+    // Use Display impl for "BenchWarn::Test"
+    log!(BenchWarn::Test);
 
     println!(
         "Duration: {}us\n-----------------------------\n",
@@ -107,6 +122,12 @@ enum BenchWarn {
     Test,
 }
 
+impl std::fmt::Display for BenchWarn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BenchWarn Display impl.")
+    }
+}
+
 #[derive(Debug, Clone, InfoLogId)]
 enum BenchInfo {
     Test,
@@ -120,4 +141,23 @@ enum BenchDbg {
 #[derive(Debug, Clone, TraceLogId)]
 enum BenchTrace {
     Test,
+}
+
+#[derive(Serialize, Deserialize)]
+struct DummyPayload {
+    vals: Vec<String>,
+}
+
+fn fmt_payload(data: &logid::serde_json::Value) -> String {
+    match logid::serde_json::from_value::<DummyPayload>(data.clone()) {
+        Ok(payload) => {
+            let mut s = String::new();
+            for val in payload.vals {
+                s.push_str(&val);
+                s.push('\n');
+            }
+            s
+        }
+        Err(_) => "Could not deserialize back to payload!".to_string(),
+    }
 }

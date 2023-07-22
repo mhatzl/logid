@@ -1,6 +1,6 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, tests::filter::test_event},
+    logging::{filter::InnerLogFilter, tests::filter::test_entry},
     new_log_id,
 };
 use evident::{event::filter::Filter, this_origin};
@@ -18,17 +18,17 @@ fn global_id_and_general_error() {
     ));
 
     assert!(
-        filter.allow_event(&test_event(log_id, this_origin!())),
+        filter.allow_entry(&test_entry(log_id, this_origin!())),
         "Explicitly allowed LogId not allowed by filter."
     );
 
     assert!(
-        filter.allow_event(&test_event(err_id, this_origin!())),
+        filter.allow_entry(&test_entry(err_id, this_origin!())),
         "Error level not allowed by filter."
     );
 
     assert!(
-        !filter.allow_event(&test_event(warn_id, this_origin!())),
+        !filter.allow_entry(&test_entry(warn_id, this_origin!())),
         "Warn level allowed by filter."
     );
 }

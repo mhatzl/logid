@@ -8,20 +8,21 @@ use colored::*;
 use logid_core::{
     evident::event::Event,
     log_id::{LogId, LogLevel},
-    logging::{event_entry::LogEventEntry, LOGGER},
+    logging::{event_entry::LogEventEntry, msg::LogMsg, LOGGER},
 };
 
-pub(super) fn stderr_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
+pub(super) fn stderr_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>) {
     terminal_writer(log_event, true);
 }
 
-pub(super) fn stdout_writer(log_event: Arc<Event<LogId, LogEventEntry>>) {
+pub(super) fn stdout_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>) {
     terminal_writer(log_event, false);
 }
 
-fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool) {
+fn terminal_writer(log_event: Arc<Event<LogId, LogMsg, LogEventEntry>>, to_stderr: bool) {
     let id = log_event.get_event_id();
     let level = id.get_log_level();
+    let entry = log_event.get_entry();
 
     let colored_vbar = get_colored_vbar(level);
     let colored_lcross = get_colored_lcross(level);
@@ -30,7 +31,14 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
     let colored_mbot = get_colored_mbot(level);
 
     let mut content_builder = ContentBuilder::new();
-    content_builder.add_header(level, log_event.get_msg(), &colored_vbar);
+    match log_event.get_msg() {
+        Some(msg) => content_builder.add_header(level, &msg.to_string(), &colored_vbar),
+        None => content_builder.add_header(
+            level,
+            &get_event_string(id, &log_event.get_entry_id().to_string()),
+            &colored_vbar,
+        ),
+    };
 
     if let Some(filter) = LOGGER.get_filter() {
         let origin = log_event.get_origin();
@@ -58,19 +66,17 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         }
     }
 
-    let entry = log_event.get_entry();
-
     // Note: Addon filter is already applied on capture side, so printing what is captured is fine here
 
     for related in entry.get_related() {
-        let related_id = related.event_id;
+        let related_id = related.get_event_id();
         let related_line = format!(
             "{}{} {}: lvl='{}', {}",
             colored_lcross,
             colored_arrow,
             "Related".bold(),
             get_colored_level(related_id.get_log_level()),
-            get_event_string(&related_id, &related.entry_id.to_string()),
+            get_event_string(related_id, &related.get_entry_id().to_string()),
         );
         content_builder.add_line(related_line);
     }
@@ -79,6 +85,18 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         content_builder.add_multiline_addon(
             "Info",
             info.lines(),
+            Some(get_level_color(LogLevel::Info)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    #[cfg(feature = "fmt")]
+    for info in entry.get_fmt_infos() {
+        content_builder.add_multiline_addon(
+            "Info",
+            info.to_string().lines(),
             Some(get_level_color(LogLevel::Info)),
             &colored_lcross,
             &colored_arrow,
@@ -97,10 +115,34 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         );
     }
 
+    #[cfg(feature = "fmt")]
+    for debug in entry.get_fmt_debugs() {
+        content_builder.add_multiline_addon(
+            "Debug",
+            debug.to_string().lines(),
+            Some(get_level_color(LogLevel::Debug)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
     for trace in entry.get_traces() {
         content_builder.add_multiline_addon(
             "Trace",
             trace.lines(),
+            Some(get_level_color(LogLevel::Trace)),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    #[cfg(feature = "fmt")]
+    for trace in entry.get_fmt_traces() {
+        content_builder.add_multiline_addon(
+            "Trace",
+            trace.to_string().lines(),
             Some(get_level_color(LogLevel::Trace)),
             &colored_lcross,
             &colored_arrow,
@@ -120,6 +162,18 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         );
     }
 
+    #[cfg(all(feature = "hint_note", feature = "fmt"))]
+    for hint in entry.get_fmt_hints() {
+        content_builder.add_multiline_addon(
+            "Hint",
+            hint.to_string().lines(),
+            Some(Color::Cyan),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
     #[cfg(feature = "hint_note")]
     for note in entry.get_notes() {
         content_builder.add_multiline_addon(
@@ -132,12 +186,24 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         );
     }
 
-    #[cfg(feature = "diagnostics")]
-    for diag in entry.get_diagnostics() {
-        // TODO: make diag output prettier
+    #[cfg(all(feature = "hint_note", feature = "fmt"))]
+    for note in entry.get_fmt_notes() {
+        content_builder.add_multiline_addon(
+            "Note",
+            note.to_string().lines(),
+            Some(Color::Cyan),
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
+        );
+    }
+
+    // Note: Only formatted diag output, because non-formatted is too much clutter
+    #[cfg(all(feature = "diagnostics", feature = "fmt"))]
+    for diag in entry.get_fmt_diagnostics() {
         content_builder.add_multiline_addon(
             "Diagnostics",
-            diag.message.lines(),
+            diag.to_string().lines(),
             None,
             &colored_lcross,
             &colored_arrow,
@@ -157,15 +223,30 @@ fn terminal_writer(log_event: Arc<Event<LogId, LogEventEntry>>, to_stderr: bool)
         );
     }
 
-    if content_builder.lines.len() > 1 {
-        let last_line = content_builder
-            .lines
-            .remove(content_builder.lines.len() - 1);
-        content_builder.lines.push(
-            last_line
-                .replacen(&colored_lcross, &colored_lbot, 1)
-                .replacen(&colored_vbar, &colored_mbot, 1),
+    #[cfg(all(feature = "payloads", feature = "fmt"))]
+    for payload in entry.get_fmt_payloads() {
+        content_builder.add_multiline_addon(
+            "Payload",
+            payload.to_string().lines(),
+            None,
+            &colored_lcross,
+            &colored_arrow,
+            &colored_vbar,
         );
+    }
+
+    if content_builder.lines.len() > 1 {
+        if let Some(last_line) = content_builder.lines.pop() {
+            if last_line.starts_with(&colored_lcross) {
+                content_builder
+                    .lines
+                    .push(last_line.replacen(&colored_lcross, &colored_lbot, 1));
+            } else {
+                content_builder
+                    .lines
+                    .push(last_line.replacen(&colored_vbar, &colored_mbot, 1));
+            }
+        }
     }
 
     let content_len = content_builder.content_len + content_builder.lines.len(); // + line-len for newline char

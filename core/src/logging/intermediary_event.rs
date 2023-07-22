@@ -4,6 +4,7 @@ use crate::log_id::LogId;
 
 use super::{
     event_entry::{AddonKind, LogEventEntry},
+    msg::LogMsg,
     LOGGER,
 };
 
@@ -14,10 +15,10 @@ pub struct IntermediaryLogEvent {
     pub(crate) entry: LogEventEntry,
 }
 
-impl evident::event::intermediary::IntermediaryEvent<LogId, LogEventEntry>
+impl evident::event::intermediary::IntermediaryEvent<LogId, LogMsg, LogEventEntry>
     for IntermediaryLogEvent
 {
-    fn new(event_id: LogId, msg: &str, origin: Origin) -> Self {
+    fn new(event_id: LogId, msg: Option<impl Into<LogMsg>>, origin: Origin) -> Self {
         IntermediaryLogEvent {
             entry: LogEventEntry::new(event_id, msg, origin),
         }
@@ -48,11 +49,6 @@ impl IntermediaryLogEvent {
         self.entry.event_id
     }
 
-    /// Returns the name of the associated crate of this log-id event
-    pub fn get_crate_name(&self) -> &'static str {
-        self.entry.origin.crate_name
-    }
-
     /// Returns the [`Entry`] of this log-id event
     pub fn get_entry(&self) -> &LogEventEntry {
         &self.entry
@@ -71,16 +67,31 @@ impl IntermediaryLogEvent {
             AddonKind::Trace(msg) => self.entry.traces.push(msg),
             AddonKind::Related(finalized_event) => self.entry.related.push(finalized_event),
 
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtInfo(fmt_msg) => self.entry.fmt_infos.push(fmt_msg),
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtDebug(fmt_msg) => self.entry.fmt_debugs.push(fmt_msg),
+            #[cfg(feature = "fmt")]
+            AddonKind::FmtTrace(fmt_msg) => self.entry.fmt_traces.push(fmt_msg),
+
             #[cfg(feature = "hint_note")]
             AddonKind::Hint(msg) => self.entry.hints.push(msg),
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtHint(fmt_msg) => self.entry.fmt_hints.push(fmt_msg),
             #[cfg(feature = "hint_note")]
             AddonKind::Note(msg) => self.entry.notes.push(msg),
+            #[cfg(all(feature = "hint_note", feature = "fmt"))]
+            AddonKind::FmtNote(fmt_msg) => self.entry.fmt_notes.push(fmt_msg),
 
             #[cfg(feature = "diagnostics")]
             AddonKind::Diagnostic(diag) => self.entry.diagnostics.push(diag),
+            #[cfg(all(feature = "diagnostics", feature = "fmt"))]
+            AddonKind::FmtDiagnostic(fmt_diag) => self.entry.fmt_diagnostics.push(fmt_diag),
 
             #[cfg(feature = "payloads")]
             AddonKind::Payload(payload) => self.entry.payloads.push(payload),
+            #[cfg(all(feature = "payloads", feature = "fmt"))]
+            AddonKind::FmtPayload(fmt_payload) => self.entry.fmt_payloads.push(fmt_payload),
         }
         self
     }

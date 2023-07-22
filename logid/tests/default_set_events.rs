@@ -42,18 +42,13 @@ fn capture_single_logid() {
         "Set and stored event levels are not equal"
     );
     assert_eq!(
-        *entry.get_msg(),
+        entry.get_msg().unwrap(),
         msg,
         "Set and stored messages are not equal"
     );
     assert_eq!(
         *entry.get_origin(),
-        Origin::new(
-            env!("CARGO_PKG_NAME"),
-            module_path!(),
-            file!(),
-            line!() - 29
-        ), //Note: Event is set 29 lines above
+        Origin::new(module_path!(), file!(), line!() - 25), //Note: Event is set 25 lines above
         "Set and stored origins are not equal"
     );
 }
@@ -88,7 +83,7 @@ fn set_event_for_err_result() {
         "Set and stored log-ids are not equal"
     );
     assert_eq!(
-        *entry.get_msg(),
+        entry.get_msg().unwrap(),
         msg,
         "Set and stored messages are not equal"
     );
@@ -121,7 +116,7 @@ fn capture_logid_with_custom_identifier() {
         "Set and stored event levels are not equal"
     );
     assert_eq!(
-        *entry.get_msg(),
+        entry.get_msg().unwrap(),
         msg,
         "Set and stored messages are not equal"
     );
