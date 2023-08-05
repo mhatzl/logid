@@ -285,6 +285,16 @@ pub struct LogIdAddonFilter {
     allowed_addons: Vec<AddonFilter>,
 }
 
+impl IntoIterator for LogIdAddonFilter {
+    type Item = Self;
+
+    type IntoIter = std::iter::Once<Self>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        std::iter::once(self)
+    }
+}
+
 impl TryFrom<&str> for LogIdAddonFilter {
     type Error = FilterError;
 
@@ -306,6 +316,16 @@ pub struct LogIdModuleFilter {
     level: LogLevel,
     allowed_ids: Vec<LogIdAddonFilter>,
     allowed_addons: Vec<AddonFilter>,
+}
+
+impl IntoIterator for LogIdModuleFilter {
+    type Item = Self;
+
+    type IntoIter = std::iter::Once<Self>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        std::iter::once(self)
+    }
 }
 
 impl LogIdModuleFilter {
