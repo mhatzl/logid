@@ -31,27 +31,33 @@ impl FilterConfigBuilder {
         self
     }
 
-    pub fn addons<T>(mut self, addons: T) -> Self
+    pub fn addons<I>(mut self, addons: I) -> Self
     where
-        T: IntoIterator<Item = AddonFilter>,
+        I: IntoIterator,
+        I::Item: Into<AddonFilter>,
     {
-        self.general_addons.extend(addons.into_iter());
+        self.general_addons
+            .extend(addons.into_iter().map(Into::into));
         self
     }
 
-    pub fn global_ids<T>(mut self, global_ids: T) -> Self
+    pub fn global_ids<I>(mut self, global_ids: I) -> Self
     where
-        T: IntoIterator<Item = LogIdAddonFilter>,
+        I: IntoIterator,
+        I::Item: Into<LogIdAddonFilter>,
     {
-        self.allowed_global_ids.extend(global_ids.into_iter());
+        self.allowed_global_ids
+            .extend(global_ids.into_iter().map(Into::into));
         self
     }
 
-    pub fn modules<T>(mut self, modules: T) -> Self
+    pub fn modules<I>(mut self, modules: I) -> Self
     where
-        T: IntoIterator<Item = LogIdModuleFilter>,
+        I: IntoIterator,
+        I::Item: Into<LogIdModuleFilter>,
     {
-        self.allowed_modules.extend(modules.into_iter());
+        self.allowed_modules
+            .extend(modules.into_iter().map(Into::into));
         self
     }
 
