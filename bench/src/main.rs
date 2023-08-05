@@ -2,13 +2,15 @@ use logid::{
     err,
     event_handler::builder::LogEventHandlerBuilder,
     log,
-    logging::{event_entry::AddonKind, LOGGER},
+    log_id::LogLevel,
+    logging::{event_entry::AddonKind, filter::AddonFilter, LOGGER},
     payload_addon, DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
 };
 use serde::{Deserialize, Serialize};
 
 fn main() {
-    let _ = logid::set_filter!("trace(all)");
+    let _ = logid::logging::filter::set_filter((LogLevel::Trace, AddonFilter::AllAllowed));
+    let _ = logid::logging::filter::set_filter(logid::filter!(Trace(AllAllowed)));
 
     let handler = LogEventHandlerBuilder::new()
         .to_stderr()

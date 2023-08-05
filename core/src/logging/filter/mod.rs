@@ -6,9 +6,13 @@ use crate::log_id::{LogId, LogLevel};
 
 use super::{event_entry::AddonKind, msg::LogMsg};
 
+mod filter_builders;
+
+pub use filter_builders::*;
+
 #[derive(Default, Debug)]
 pub struct LogFilter {
-    filter: Arc<RwLock<InnerLogFilter>>,
+    filter: Arc<RwLock<FilterConfig>>,
 }
 
 /// Returns `true` if logid is configured to allow the given level.
@@ -29,15 +33,17 @@ fn allow_level(level: LogLevel) -> bool {
 
 impl LogFilter {
     pub fn new() -> Self {
+        let filter_config = FilterConfig::new(&filter_config());
+
         LogFilter {
-            filter: Arc::new(RwLock::new(InnerLogFilter::new(&filter_config()))),
+            filter: Arc::new(RwLock::new(filter_config)),
         }
     }
 
-    pub fn set_filter(&self, config: &str) -> Result<(), FilterError> {
+    pub fn set_filter(&self, filter_config: FilterConfig) -> Result<(), FilterError> {
         match self.filter.write() {
             Ok(mut locked_filter) => {
-                locked_filter.replace(InnerLogFilter::new(config));
+                locked_filter.replace(filter_config);
             }
             Err(_) => todo!(),
         }
@@ -88,6 +94,17 @@ fn filter_config() -> String {
     }
 }
 
+pub fn set_filter<T>(into_filter: T) -> Result<(), crate::logging::filter::FilterError>
+where
+    T: Into<FilterConfig>,
+{
+    if let Some(filter) = crate::logging::LOGGER.get_filter() {
+        filter.set_filter(into_filter.into())
+    } else {
+        Err(crate::logging::filter::FilterError::SettingFilter)
+    }
+}
+
 impl evident::event::filter::Filter<LogId, LogMsg> for LogFilter {
     fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
         if !allow_level(entry.get_event_id().log_level) {
@@ -101,7 +118,7 @@ impl evident::event::filter::Filter<LogId, LogMsg> for LogFilter {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AddonFilter {
     #[default]
     Id,
@@ -194,7 +211,17 @@ impl TryFrom<&str> for AddonFilter {
     }
 }
 
-#[derive(Default, Debug)]
+impl IntoIterator for AddonFilter {
+    type Item = Self;
+
+    type IntoIter = std::iter::Once<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        std::iter::once(self)
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LogIdFilter {
     module_path: String,
     identifier: String,
@@ -249,7 +276,7 @@ impl TryFrom<&str> for LogIdFilter {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LogIdAddonFilter {
     log_id: LogIdFilter,
     allowed_addons: Vec<AddonFilter>,
@@ -269,7 +296,7 @@ impl TryFrom<&str> for LogIdAddonFilter {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LogIdModuleFilter {
     no_general_logging: bool,
     origin_module_path: String,
@@ -352,7 +379,7 @@ impl LogIdModuleFilter {
 }
 
 #[derive(Default, Debug)]
-pub(super) struct InnerLogFilter {
+pub struct FilterConfig {
     no_general_logging: bool,
     general_level: LogLevel,
     general_addons: Vec<AddonFilter>,
@@ -361,16 +388,16 @@ pub(super) struct InnerLogFilter {
     allowed_modules: Vec<LogIdModuleFilter>,
 }
 
-impl InnerLogFilter {
+impl FilterConfig {
     pub fn new(filter: &str) -> Self {
         if filter.trim().is_empty() || filter.to_lowercase() == "off" {
-            return InnerLogFilter {
+            return FilterConfig {
                 no_general_logging: true,
                 ..Default::default()
             };
         }
 
-        let mut log_filter = InnerLogFilter {
+        let mut log_filter = FilterConfig {
             no_general_logging: true,
             general_level: LogLevel::Error,
             general_addons: Vec::new(),
@@ -443,9 +470,13 @@ impl InnerLogFilter {
         addon_allowed(&self.allowed_global_ids, id, &addon_filter)
             || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
     }
+
+    pub fn builder() -> FilterConfigBuilder {
+        FilterConfigBuilder::new(LogLevel::Error)
+    }
 }
 
-impl evident::event::filter::Filter<LogId, LogMsg> for InnerLogFilter {
+impl evident::event::filter::Filter<LogId, LogMsg> for FilterConfig {
     fn allow_entry(&self, entry: &impl evident::event::entry::EventEntry<LogId, LogMsg>) -> bool {
         // Note: event handler creates unique LogIds per handler => filter on origin
         if entry
@@ -467,6 +498,15 @@ impl evident::event::filter::Filter<LogId, LogMsg> for InnerLogFilter {
                 *entry.get_event_id(),
                 entry.get_origin(),
             )
+    }
+}
+
+impl<I> From<(LogLevel, I)> for FilterConfig
+where
+    I: IntoIterator<Item = AddonFilter>,
+{
+    fn from((level, addons): (LogLevel, I)) -> Self {
+        FilterConfig::builder().level(level).addons(addons).build()
     }
 }
 

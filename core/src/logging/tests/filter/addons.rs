@@ -1,7 +1,7 @@
 use crate::{
     log_id::LogLevel,
     logging::{
-        event_entry::AddonKind, filter::InnerLogFilter, intermediary_event::IntermediaryLogEvent,
+        event_entry::AddonKind, filter::FilterConfig, intermediary_event::IntermediaryLogEvent,
         msg::NO_MSG, tests::filter::test_entry,
     },
     new_log_id,
@@ -14,7 +14,7 @@ use evident::{
 #[test]
 fn allow_single_id_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = InnerLogFilter::new(&format!(
+    let filter = FilterConfig::new(&format!(
         "on[{}::{}(infos)]",
         log_id.get_module_path(),
         log_id.get_identifier()
@@ -38,7 +38,7 @@ fn allow_single_id_with_infos_addon() {
 #[test]
 fn allow_single_id_with_infos_and_origin_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = InnerLogFilter::new(&format!(
+    let filter = FilterConfig::new(&format!(
         "on[{}::{}(infos & origin)]",
         log_id.get_module_path(),
         log_id.get_identifier()
@@ -67,7 +67,7 @@ fn allow_single_id_with_infos_and_origin_addon() {
 #[test]
 fn allow_single_id_with_related_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = InnerLogFilter::new(&format!(
+    let filter = FilterConfig::new(&format!(
         "on[{}::{}(related)]",
         log_id.get_module_path(),
         log_id.get_identifier()
@@ -89,7 +89,7 @@ fn allow_single_id_with_related_addon() {
 #[test]
 fn allow_single_id_with_all_addons() {
     let log_id = new_log_id!("log_id", LogLevel::Info);
-    let filter = InnerLogFilter::new(&format!(
+    let filter = FilterConfig::new(&format!(
         "on[{}::{}(all)]",
         log_id.get_module_path(),
         log_id.get_identifier()
@@ -160,7 +160,7 @@ fn allow_single_id_with_all_addons() {
 #[test]
 fn allow_module_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = InnerLogFilter::new("logid_core::logging(infos) = error");
+    let filter = FilterConfig::new("logid_core::logging(infos) = error");
 
     assert!(
         filter.allow_entry(&test_entry(log_id, this_origin!())),
@@ -180,7 +180,7 @@ fn allow_module_with_infos_addon() {
 #[test]
 fn allow_crate_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = InnerLogFilter::new("logid_core(infos) = error");
+    let filter = FilterConfig::new("logid_core(infos) = error");
 
     assert!(
         filter.allow_entry(&test_entry(log_id, this_origin!())),
@@ -200,7 +200,7 @@ fn allow_crate_with_infos_addon() {
 #[test]
 fn allow_general_level_with_infos_addon() {
     let log_id = new_log_id!("log_id", LogLevel::Error);
-    let filter = InnerLogFilter::new("error(infos)");
+    let filter = FilterConfig::new("error(infos)");
 
     assert!(
         filter.allow_entry(&test_entry(log_id, this_origin!())),

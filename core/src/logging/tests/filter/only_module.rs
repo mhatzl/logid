@@ -1,13 +1,13 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, tests::filter::test_entry},
+    logging::{filter::FilterConfig, tests::filter::test_entry},
     new_log_id,
 };
 use evident::{event::filter::Filter, this_origin};
 
 #[test]
 fn single_module() {
-    let filter = InnerLogFilter::new("logid_core::logging = warn");
+    let filter = FilterConfig::new("logid_core::logging = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
     assert!(
@@ -24,7 +24,7 @@ fn single_module() {
 
 #[test]
 fn only_crate_name_as_module() {
-    let filter = InnerLogFilter::new("logid_core = warn");
+    let filter = FilterConfig::new("logid_core = warn");
 
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
     assert!(
@@ -41,7 +41,7 @@ fn only_crate_name_as_module() {
 
 #[test]
 fn multiple_modules() {
-    let filter = InnerLogFilter::new(
+    let filter = FilterConfig::new(
         "logid_core::logging::tests = warn, logid_core::logging::event_entry = info",
     );
 
@@ -60,7 +60,7 @@ fn multiple_modules() {
 
 #[test]
 fn module_with_id() {
-    let filter = InnerLogFilter::new(
+    let filter = FilterConfig::new(
         "logid_core::logging[logid_core::logging::tests::filter::only_module::info_id] = error",
     );
 
@@ -79,7 +79,7 @@ fn module_with_id() {
 
 #[test]
 fn module_with_id_allowed_only() {
-    let filter = InnerLogFilter::new(
+    let filter = FilterConfig::new(
         "logid_core::logging[logid_core::logging::tests::filter::only_module::info_id]",
     );
 
