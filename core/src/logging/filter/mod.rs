@@ -45,7 +45,10 @@ impl LogFilter {
             Ok(mut locked_filter) => {
                 locked_filter.replace(filter_config);
             }
-            Err(_) => todo!(),
+            Err(mut err) => {
+                // lock poisoned, replace inner filter completely
+                **err.get_mut() = filter_config;
+            }
         }
 
         Ok(())
