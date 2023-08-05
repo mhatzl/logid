@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 
 fn main() {
     let _ = logid::logging::filter::set_filter((LogLevel::Trace, AddonFilter::AllAllowed));
-    let _ = logid::logging::filter::set_filter(logid::filter!(Trace(AllAllowed)));
 
     let handler = LogEventHandlerBuilder::new()
         .to_stderr()

@@ -116,30 +116,3 @@ macro_rules! pipe {
         }
     };
 }
-
-/// Helper macro for construction of a [`FilterConfig`] using custom short-hand syntax.
-///
-/// # Example
-/// ```
-/// # use logid::{log_id::LogLevel, logging::filter::AddonFilter};
-/// let (level, addon) = logid::filter!(Trace(AllAllowed));
-///
-/// assert_eq!(level, LogLevel::Trace);
-/// assert_eq!(addon, AddonFilter::AllAllowed);
-/// ```
-#[macro_export]
-macro_rules! filter {
-    ($level:ident($addon:ident)) => {
-        (
-            $crate::log_id::LogLevel::$level,
-            $crate::logging::filter::AddonFilter::$addon,
-        )
-    };
-
-    ($level:path { $addon:path } ) => {{
-        let level: $crate::log_id::LogLevel = $level;
-        let addon: $crate::logging::filter::AddonFilter = $addon;
-
-        (level, $addon)
-    }};
-}
