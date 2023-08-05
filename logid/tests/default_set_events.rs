@@ -17,20 +17,12 @@ enum TestErrId {
     Two,
 }
 
-#[derive(Debug, Default, logid_derive::TraceLogId, PartialEq, Clone, Error)]
-enum TraceTest {
-    #[error("Trace on `TraceTest::Trace`")]
-    #[default]
-    Trace,
-}
-
 #[test]
 fn capture_single_logid() {
     let msg = "Set first log message";
 
     let recv = LOGGER.subscribe(TestErrId::One.into()).unwrap();
 
-    log!(TraceTest::Trace, msg);
     log!(TestErrId::One, msg);
 
     let event = recv
