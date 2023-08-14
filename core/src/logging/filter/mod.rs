@@ -494,8 +494,8 @@ impl FilterConfig {
             || addon_allowed_in_origin(&self.allowed_modules, id, origin, &addon_filter)
     }
 
-    pub fn builder() -> FilterConfigBuilder {
-        FilterConfigBuilder::new(LogLevel::Error)
+    pub fn builder(log_level: LogLevel) -> FilterConfigBuilder {
+        FilterConfigBuilder::new(log_level)
     }
 }
 
@@ -529,7 +529,7 @@ where
     I: IntoIterator<Item = AddonFilter>,
 {
     fn from((level, addons): (LogLevel, I)) -> Self {
-        FilterConfig::builder().level(level).addons(addons).build()
+        FilterConfig::builder(level).allowed_addons(addons).build()
     }
 }
 

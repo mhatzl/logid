@@ -31,7 +31,7 @@ impl FilterConfigBuilder {
         self
     }
 
-    pub fn addons<I>(mut self, addons: I) -> Self
+    pub fn allowed_addons<I>(mut self, addons: I) -> Self
     where
         I: IntoIterator,
         I::Item: Into<AddonFilter>,
