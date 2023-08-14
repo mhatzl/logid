@@ -4,8 +4,7 @@ use super::{AddonFilter, FilterConfig, LogIdAddonFilter, LogIdModuleFilter};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FilterConfigBuilder {
-    // TODO: negation is confusing, use affirmation instead (no_general_logging -> general_logging)
-    no_general_logging: bool,
+    logging_enabled: bool,
     general_level: LogLevel,
     general_addons: Vec<AddonFilter>,
     /// LogIds set with `on[LogId]`
@@ -14,6 +13,7 @@ pub struct FilterConfigBuilder {
 }
 
 impl FilterConfigBuilder {
+    /// Creates a new builder for [`FilterConfig`].
     pub fn new(level: LogLevel) -> Self {
         Self {
             general_level: level,
@@ -21,16 +21,13 @@ impl FilterConfigBuilder {
         }
     }
 
-    pub fn level(mut self, level: LogLevel) -> Self {
-        self.general_level = level;
+    /// Disable logging in general.
+    pub fn disabled_logging(mut self) -> Self {
+        self.logging_enabled = false;
         self
     }
 
-    pub fn no_general_logging(mut self) -> Self {
-        self.no_general_logging = true;
-        self
-    }
-
+    /// Add addons allowed by the filter.
     pub fn allowed_addons<I>(mut self, addons: I) -> Self
     where
         I: IntoIterator,
@@ -41,6 +38,7 @@ impl FilterConfigBuilder {
         self
     }
 
+    /// Add LogIDs allowed by the filter.
     pub fn global_ids<I>(mut self, global_ids: I) -> Self
     where
         I: IntoIterator,
@@ -51,6 +49,7 @@ impl FilterConfigBuilder {
         self
     }
 
+    /// Add modules allowed by the filter.
     pub fn modules<I>(mut self, modules: I) -> Self
     where
         I: IntoIterator,
@@ -61,9 +60,10 @@ impl FilterConfigBuilder {
         self
     }
 
+    /// Build [`FilterConfig`] with configuration constructed using the builder.
     pub fn build(self) -> FilterConfig {
         FilterConfig {
-            no_general_logging: self.no_general_logging,
+            logging_enabled: self.logging_enabled,
             general_level: self.general_level,
             general_addons: self.general_addons,
             allowed_global_ids: self.allowed_global_ids,
