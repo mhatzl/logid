@@ -116,14 +116,3 @@ macro_rules! pipe {
         }
     };
 }
-
-#[macro_export]
-macro_rules! set_filter {
-    ($config:literal) => {{
-        if let Some(filter) = $crate::logging::LOGGER.get_filter() {
-            filter.set_filter($config)
-        } else {
-            Err($crate::logging::filter::FilterError::SettingFilter)
-        }
-    }};
-}

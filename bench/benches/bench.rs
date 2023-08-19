@@ -1,6 +1,7 @@
 use criterion::{black_box, Criterion};
 use criterion::{criterion_group, criterion_main};
-use logid::logging::LOGGER;
+use logid::logging::filter::AddonFilter;
+use logid::logging::{filter, LOGGER};
 use logid::{
     err, event_handler::builder::LogEventHandlerBuilder, log, log_id::LogLevel,
     logging::event_entry::AddonKind, DbgLogId, ErrLogId, InfoLogId, TraceLogId, WarnLogId,
@@ -60,7 +61,7 @@ pub fn bench_compare_advanced_logging(c: &mut Criterion) {
         .with_max_level(LevelFilter::DEBUG)
         .init();
 
-    let _ = logid::set_filter!("debug(infos)");
+    let _ = filter::set_filter((LogLevel::Debug, AddonFilter::Infos));
 
     let _log_handler = LogEventHandlerBuilder::new()
         .to_stderr()

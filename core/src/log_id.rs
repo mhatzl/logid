@@ -71,7 +71,7 @@ impl std::fmt::Display for LogId {
 }
 
 /// Log level a [`LogId`] may represent.
-#[derive(Debug, Default, PartialOrd, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
+#[derive(Debug, Default, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, std::hash::Hash)]
 pub enum LogLevel {
     Trace = 0,
     #[default]

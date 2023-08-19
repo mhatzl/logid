@@ -1,6 +1,6 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, tests::filter::test_entry},
+    logging::{filter::FilterConfig, tests::filter::test_entry},
     new_log_id,
 };
 use evident::{event::filter::Filter, this_origin};
@@ -11,7 +11,7 @@ fn global_id_and_general_error() {
     let err_id = new_log_id!("err_id", LogLevel::Error);
     let warn_id = new_log_id!("warn_id", LogLevel::Warn);
 
-    let filter = InnerLogFilter::new(&format!(
+    let filter = FilterConfig::new(&format!(
         "on[{}::{}], error",
         log_id.get_module_path(),
         log_id.get_identifier()

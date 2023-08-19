@@ -1,13 +1,13 @@
 use crate::{
     log_id::LogLevel,
-    logging::{filter::InnerLogFilter, tests::filter::test_entry},
+    logging::{filter::FilterConfig, tests::filter::test_entry},
     new_log_id,
 };
 use evident::{event::filter::Filter, this_origin};
 
 #[test]
 fn logging_turned_off() {
-    let filter = InnerLogFilter::new("off");
+    let filter = FilterConfig::new("off");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
 
@@ -19,7 +19,7 @@ fn logging_turned_off() {
 
 #[test]
 fn empty_filter_means_logging_turned_off() {
-    let filter = InnerLogFilter::new("");
+    let filter = FilterConfig::new("");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
 
@@ -31,7 +31,7 @@ fn empty_filter_means_logging_turned_off() {
 
 #[test]
 fn only_allow_error() {
-    let filter = InnerLogFilter::new("error");
+    let filter = FilterConfig::new("error");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
@@ -48,7 +48,7 @@ fn only_allow_error() {
 
 #[test]
 fn allow_error_and_warning() {
-    let filter = InnerLogFilter::new("warn");
+    let filter = FilterConfig::new("warn");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
@@ -71,7 +71,7 @@ fn allow_error_and_warning() {
 
 #[test]
 fn allow_error_warning_and_info() {
-    let filter = InnerLogFilter::new("info");
+    let filter = FilterConfig::new("info");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
@@ -100,7 +100,7 @@ fn allow_error_warning_and_info() {
 
 #[test]
 fn allow_error_warning_info_and_debug() {
-    let filter = InnerLogFilter::new("debug");
+    let filter = FilterConfig::new("debug");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
@@ -135,7 +135,7 @@ fn allow_error_warning_info_and_debug() {
 
 #[test]
 fn allow_error_warning_info_debug_and_trace() {
-    let filter = InnerLogFilter::new("trace");
+    let filter = FilterConfig::new("trace");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
@@ -170,7 +170,7 @@ fn allow_error_warning_info_debug_and_trace() {
 
 #[test]
 fn logging_on_equal_to_trace() {
-    let filter = InnerLogFilter::new("on");
+    let filter = FilterConfig::new("on");
 
     let error_id = new_log_id!("err_id", LogLevel::Error);
     assert!(
