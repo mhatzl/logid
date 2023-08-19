@@ -4,7 +4,7 @@ use super::{AddonFilter, FilterConfig, LogIdAddonFilter, LogIdModuleFilter};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FilterConfigBuilder {
-    logging_enabled: bool,
+    general_logging_enabled: bool,
     general_level: LogLevel,
     general_addons: Vec<AddonFilter>,
     /// LogIds set with `on[LogId]`
@@ -22,8 +22,8 @@ impl FilterConfigBuilder {
     }
 
     /// Disable logging in general.
-    pub fn disabled_logging(mut self) -> Self {
-        self.logging_enabled = false;
+    pub fn disabled_general_logging(mut self) -> Self {
+        self.general_logging_enabled = false;
         self
     }
 
@@ -63,7 +63,7 @@ impl FilterConfigBuilder {
     /// Build [`FilterConfig`] with configuration constructed using the builder.
     pub fn build(self) -> FilterConfig {
         FilterConfig {
-            logging_enabled: self.logging_enabled,
+            general_logging_enabled: self.general_logging_enabled,
             general_level: self.general_level,
             general_addons: self.general_addons,
             allowed_global_ids: self.allowed_global_ids,

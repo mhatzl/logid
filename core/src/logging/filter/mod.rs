@@ -403,7 +403,7 @@ impl LogIdModuleFilter {
 
 #[derive(Default, Debug)]
 pub struct FilterConfig {
-    logging_enabled: bool,
+    general_logging_enabled: bool,
     general_level: LogLevel,
     general_addons: Vec<AddonFilter>,
     /// LogIds set with `on[LogId]`
@@ -415,13 +415,13 @@ impl FilterConfig {
     pub fn new(filter: &str) -> Self {
         if filter.trim().is_empty() || filter.to_lowercase() == "off" {
             return FilterConfig {
-                logging_enabled: false,
+                general_logging_enabled: false,
                 ..Default::default()
             };
         }
 
         let mut log_filter = FilterConfig {
-            logging_enabled: false,
+            general_logging_enabled: false,
             general_level: LogLevel::Error,
             general_addons: Vec::new(),
             allowed_global_ids: Vec::new(),
@@ -439,7 +439,7 @@ impl FilterConfig {
                 let addons = get_addons(&mut stripped_filter_part);
 
                 if let Some(general_level) = try_into_log_level(stripped_filter_part.trim()) {
-                    log_filter.logging_enabled = true;
+                    log_filter.general_logging_enabled = true;
                     log_filter.general_level = general_level;
                     log_filter.general_addons = addons;
                 } else if let Ok(module_filter) =
@@ -458,13 +458,13 @@ impl FilterConfig {
         self.allowed_modules = other.allowed_modules;
         self.general_addons = other.general_addons;
         self.general_level = other.general_level;
-        self.logging_enabled = other.logging_enabled;
+        self.general_logging_enabled = other.general_logging_enabled;
     }
 
     pub fn allow_addon(&self, id: LogId, origin: &Origin, addon: &AddonKind) -> bool {
         let addon_filter = AddonFilter::from(addon);
 
-        if self.logging_enabled && self.general_addons.contains(&addon_filter) {
+        if self.general_logging_enabled && self.general_addons.contains(&addon_filter) {
             return true;
         }
 
@@ -475,7 +475,7 @@ impl FilterConfig {
     pub fn show_origin_info(&self, id: LogId, origin: &Origin) -> bool {
         let addon_filter = AddonFilter::Origin;
 
-        if self.logging_enabled && self.general_addons.contains(&addon_filter) {
+        if self.general_logging_enabled && self.general_addons.contains(&addon_filter) {
             return true;
         }
 
@@ -486,7 +486,7 @@ impl FilterConfig {
     pub fn show_id(&self, id: LogId, origin: &Origin) -> bool {
         let addon_filter = AddonFilter::Id;
 
-        if self.logging_enabled && self.general_addons.contains(&addon_filter) {
+        if self.general_logging_enabled && self.general_addons.contains(&addon_filter) {
             return true;
         }
 
@@ -511,7 +511,7 @@ impl evident::event::filter::Filter<LogId, LogMsg> for FilterConfig {
         }
 
         // Note: `Trace` starts at `0`
-        if self.logging_enabled && self.general_level <= entry.get_event_id().log_level {
+        if self.general_logging_enabled && self.general_level <= entry.get_event_id().log_level {
             return true;
         }
 
