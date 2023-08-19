@@ -14,7 +14,7 @@ categories = ["development-tools::debugging"]
 [dependencies]
 logid-core = { path = "../core", version = "0" }
 logid-derive = { path = "../derive", version = "0" }
-colored = "2"
+colored = "2.0.0"
 
 [features]
 diagnostics = ["logid-core/diagnostics"]

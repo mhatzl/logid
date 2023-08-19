@@ -16,6 +16,7 @@ impl FilterConfigBuilder {
     /// Creates a new builder for [`FilterConfig`].
     pub fn new(level: LogLevel) -> Self {
         Self {
+            general_logging_enabled: true,
             general_level: level,
             ..Default::default()
         }
