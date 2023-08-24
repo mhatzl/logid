@@ -1,5 +1,6 @@
 pub mod log_id;
 pub mod logging;
+pub mod result;
 
 // Re-exports
 pub use evident;
