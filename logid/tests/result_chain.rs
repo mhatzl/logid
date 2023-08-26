@@ -1,6 +1,6 @@
 use logid::log;
 
-use logid_core::{evident::event::finalized::FinalizedEvent, log_id::LogId};
+use logid_core::{evident::event::finalized::FinalizedEvent, log_id::LogId, result::LoggedData};
 use logid_derive::ErrLogId;
 
 #[derive(ErrLogId)]
@@ -15,9 +15,9 @@ impl From<(InnerError, FinalizedEvent<LogId>)> for InnerError {
     }
 }
 
-fn inner() -> logid::result::Result<(), InnerError> {
+fn inner() -> logid::result::LoggedResult<(), InnerError> {
     let event = log!(InnerError::First, "Test");
-    Err((InnerError::First, event)).into()
+    Err((InnerError::First, event).into())
 }
 
 #[derive(ErrLogId)]
@@ -38,9 +38,14 @@ impl From<(OuterError, FinalizedEvent<LogId>)> for OuterError {
     }
 }
 
-fn outer() -> logid::result::Result<(), OuterError> {
-    inner()
-}
+// fn outer() -> logid::result::LoggedResult<(), OuterError> {
+//     inner().map_err(|err| {
+//         LoggedData::from((
+//             std::convert::Into::<OuterError>::into(err.data()),
+//             err.event().clone(),
+//         ))
+//     })
+// }
 
 #[test]
 fn one_hop_chain() {}
