@@ -178,3 +178,75 @@ fn enum_as_trace_log_id() {
         "LogLevel::Trace was not set using TraceLogId derive macro.",
     );
 }
+
+#[derive(PartialEq, Eq, Debug, Default, ErrLogId)]
+enum ComplexLogId {
+    #[default]
+    First,
+    Second(String),
+    Third {
+        field: String,
+    },
+    Fourth {
+        field_1: usize,
+        field_2: String,
+    },
+}
+
+#[test]
+fn complex_enum_log_id_tuple_variant() {
+    let complex_id: LogId = ComplexLogId::Second(String::new()).into();
+
+    assert_eq!(
+        complex_id.get_identifier(),
+        "ComplexLogId::Second(_)",
+        "Derive set wrong identifier name for second variant.",
+    );
+
+    assert_eq!(
+        complex_id.get_log_level(),
+        LogLevel::Error,
+        "LogLevel::Error was not set using ErrLogId derive macro.",
+    );
+}
+
+#[test]
+fn complex_enum_log_id_struct_variant_single_field() {
+    let complex_id: LogId = ComplexLogId::Third {
+        field: String::new(),
+    }
+    .into();
+
+    assert_eq!(
+        complex_id.get_identifier(),
+        "ComplexLogId::Third{..}",
+        "Derive set wrong identifier name for third variant.",
+    );
+
+    assert_eq!(
+        complex_id.get_log_level(),
+        LogLevel::Error,
+        "LogLevel::Error was not set using ErrLogId derive macro.",
+    );
+}
+
+#[test]
+fn complex_enum_log_id_struct_variant_mult_fields() {
+    let complex_id: LogId = ComplexLogId::Fourth {
+        field_1: 1,
+        field_2: String::new(),
+    }
+    .into();
+
+    assert_eq!(
+        complex_id.get_identifier(),
+        "ComplexLogId::Fourth{..}",
+        "Derive set wrong identifier name for fourth variant.",
+    );
+
+    assert_eq!(
+        complex_id.get_log_level(),
+        LogLevel::Error,
+        "LogLevel::Error was not set using ErrLogId derive macro.",
+    );
+}

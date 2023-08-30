@@ -34,7 +34,7 @@ mod panic_hook_tests {
             let location = panic_info.location().map(|l| l.to_string());
 
             let info = PanicInfo {
-                payload: payload.as_deref().map(|p| p.to_string()),
+                payload: payload.map(|p| p.to_string()),
                 location,
             };
 

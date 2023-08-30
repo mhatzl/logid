@@ -42,14 +42,20 @@ fn derive_log_id(input: TokenStream, log_level: LogLevel) -> TokenStream {
 
             for variant in enum_data.variants {
                 let field_name = variant.ident;
-                let full_field_name = if variant.fields.is_empty() {
-                    quote_spanned! {span=>
+                let full_field_name = match variant.fields {
+                    syn::Fields::Named(_) => {
+                        quote_spanned! {span=>
+                            #ident_name::#field_name{..}
+                        }
+                    }
+                    syn::Fields::Unnamed(_) => {
+                        quote_spanned! {span=>
+                            #ident_name::#field_name(_)
+                        }
+                    }
+                    _ => quote_spanned! {span=>
                         #ident_name::#field_name
-                    }
-                } else {
-                    quote_spanned! {span=>
-                        #ident_name::#field_name(_)
-                    }
+                    },
                 };
                 let full_field_name_str =
                     syn::LitStr::new(&full_field_name.to_string().replace(' ', ""), span);
