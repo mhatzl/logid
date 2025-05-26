@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "bench",
+  "core",
+  "derive",
+  "logid",
+]
+
+[workspace.package]
+version = "0.12.2"
+edition = "2021"
+description = "Rust logging framework using IDs to identify log entries."
+repository = "https://github.com/mhatzl/logid"
+license = "MIT"
+keywords = ["logging", "tracing"]
+categories = ["development-tools::debugging"]
+readme = "README.md"

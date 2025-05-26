@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run cargo fmt
+      run: cargo fmt -- --check
+
+  lint:
+    name: Run Linter (clippy)
+    runs-on: ubuntu-latest
+    needs: format
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run linter
+      run: cargo clippy --all-features -- -D warnings
+
+  build:
+    name: Run Build
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose
+
+  build-all:
+    name: Run Build with all features
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose --all-features
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build-all
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run tests
+      # Sequential testing required since LogIds may be subscribed to in different tests.
+      run: cargo test --verbose --all-features -- --test-threads 1

@@ -1,0 +1,24 @@
+[package]
+name = "logid-core"
+description = "Core for the [logid](https://crates.io/crates/logid) logging framework."
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+evident = { version = "~0.12" }
+lsp-types = { version = "0.94", optional = true }
+serde_json = { version = "1.0", optional = true }
+
+[features]
+diagnostics = ["lsp-types"]
+payloads = ["serde_json"]
+fmt = ["serde_json"]
+hint_note = []
+log_debugs = []
+log_traces = []
+test_filter = []

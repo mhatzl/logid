@@ -1,0 +1,31 @@
+[package]
+name = "logid"
+description.workspace = true
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+keywords = ["logging"]
+categories = ["development-tools::debugging"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+logid-core = { path = "../core", version = "0" }
+logid-derive = { path = "../derive", version = "0" }
+colored = "2.0.0"
+
+[features]
+diagnostics = ["logid-core/diagnostics"]
+payloads = ["logid-core/payloads"]
+fmt = ["logid-core/fmt"]
+hint_note = ["logid-core/hint_note"]
+log_debugs = ["logid-core/log_debugs"]
+log_traces = ["logid-core/log_traces"]
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+logid-core = { path = "../core", version = "0", features = ["log_debugs", "log_traces", "test_filter"] }
